@@ -1,9 +1,129 @@
 <!DOCTYPE html>
+<!-- Mi Tienda Digital tienda.html v2.4.0 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.3.5</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.0</title>
+  <script>
+    /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
+    (function () {
+      'use strict';
+      var SCHEMA = 1, MAX = 30, DEDUPE_MS = 5000, last = Object.create(null);
+      var context = { storeId: null, slug: '', userId: null, file: '', version: '' };
+      function safeText(value) {
+        var s = String(value == null ? '' : value).replace(/https?:\/\/\S+/gi, '[url]')
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo]')
+          .replace(/\b(?:\+?\d[\d\s().-]{7,}\d)\b/g, '[telefono]')
+          .replace(/eyJ[A-Za-z0-9._-]{20,}/g, '[token]');
+        return s.slice(0, 200);
+      }
+      function key() {
+        if (context.storeId) return 'mtd_diag_' + context.storeId;
+        if (context.slug) return 'mtd_diag_slug_' + context.slug;
+        if (context.userId) return 'mtd_diag_user_' + context.userId;
+        return 'mtd_diag_sin_tienda';
+      }
+      function record(code, phase, message, options) {
+        try {
+          options = options || {};
+          if (code === 'TD-007' && (options.silent === true)) return;
+          var now = Date.now(), sig = code + '|' + phase + '|' + safeText(message);
+          if (last[sig] && now - last[sig].time < DEDUPE_MS) {
+            last[sig].count++;
+            try {
+              var old = JSON.parse(localStorage.getItem(key()) || '[]');
+              var found = old.find(function (x) { return x.incidentId === last[sig].id; });
+              if (found) { found.repetitions = last[sig].count; localStorage.setItem(key(), JSON.stringify(old)); }
+            } catch (_) {}
+            return;
+          }
+          var arr;
+          try { arr = JSON.parse(localStorage.getItem(key()) || '[]'); if (!Array.isArray(arr)) arr = []; } catch (_) { arr = []; }
+          if (code === 'TD-007' && arr.filter(function (x) { return x.code === 'TD-007'; }).length >= 5) return;
+          var item = {
+            incidentId: 'd' + now.toString(36) + Math.random().toString(36).slice(2, 7),
+            code: code, phase: safeText(phase), date: new Date(now).toISOString(),
+            storeId: context.storeId || null, slug: context.slug || null,
+            file: context.file, version: context.version,
+            message: safeText(message), repetitions: 1, schema: SCHEMA
+          };
+          arr.unshift(item); arr = arr.slice(0, MAX);
+          localStorage.setItem(key(), JSON.stringify(arr));
+          last[sig] = { time: now, count: 1, id: item.incidentId };
+        } catch (_) { /* diagnóstico aislado: no propagar */ }
+      }
+      function setContext(data) {
+        try {
+          data = data || {};
+          var previousSlug = context.slug;
+          var previousUser = context.userId;
+          if (data.slug) context.slug = String(data.slug).trim().toLowerCase().replace(/^\/+|\/+$/g, '').slice(0, 100);
+          if (data.userId) context.userId = String(data.userId);
+          if (data.file) context.file = data.file;
+          if (data.version) context.version = data.version;
+          if (data.storeId) {
+            var destination = 'mtd_diag_' + String(data.storeId);
+            var sources = [];
+            if (previousSlug) sources.push('mtd_diag_slug_' + previousSlug);
+            if (previousUser) sources.push('mtd_diag_user_' + previousUser);
+            var merged = [], ids = Object.create(null);
+            try { var existing = JSON.parse(localStorage.getItem(destination) || '[]'); if (Array.isArray(existing)) existing.forEach(function (x) { if (x && x.incidentId && !ids[x.incidentId]) { ids[x.incidentId] = true; merged.push(x); } }); } catch (_) {}
+            sources.forEach(function (source) {
+              try {
+                var pending = JSON.parse(localStorage.getItem(source) || '[]');
+                if (!Array.isArray(pending) || !pending.length) return;
+                pending.forEach(function (x) { if (x && x.incidentId && !ids[x.incidentId]) { ids[x.incidentId] = true; merged.push(x); } });
+                localStorage.setItem(destination, JSON.stringify(merged.slice(0, MAX)));
+                var check = JSON.parse(localStorage.getItem(destination) || '[]');
+                var verified = Array.isArray(check) && pending.every(function (x) { return !x || !x.incidentId || check.some(function (y) { return y.incidentId === x.incidentId; }); });
+                if (verified) localStorage.removeItem(source);
+              } catch (_) { /* conservar provisional si no se pudo verificar */ }
+            });
+            context.storeId = String(data.storeId);
+          }
+        } catch (_) {}
+      }
+      function readFor(storeId, slug, userId) {
+        var all = [], seen = Object.create(null);
+        var keys = [];
+        if (storeId) keys.push('mtd_diag_' + storeId);
+        if (slug) keys.push('mtd_diag_slug_' + String(slug).replace(/^\/+|\/+$/g, '').toLowerCase());
+        if (userId) keys.push('mtd_diag_user_' + userId);
+        keys.forEach(function (k) {
+          try { var part = JSON.parse(localStorage.getItem(k) || '[]'); if (Array.isArray(part)) part.forEach(function (x) { if (x && x.incidentId && !seen[x.incidentId]) { seen[x.incidentId] = true; all.push(x); } }); } catch (_) {}
+        });
+        return all.sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); }).slice(0, MAX);
+      }
+      function clearFor(storeId, slug, userId) {
+        try {
+          if (storeId) localStorage.removeItem('mtd_diag_' + storeId);
+          if (slug) localStorage.removeItem('mtd_diag_slug_' + String(slug).replace(/^\/+|\/+$/g, '').toLowerCase());
+          if (userId) localStorage.removeItem('mtd_diag_user_' + userId);
+        } catch (_) {}
+      }
+      var api = { record: record, setContext: setContext, readFor: readFor, clearFor: clearFor };
+      window.MTD_DIAG = api;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.0' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.0' }); }
+      window.addEventListener('error', function (event) {
+        try {
+          var target = event && event.target;
+          if (target && (target.src || target.href)) {
+            var tag = String(target.tagName || '').toLowerCase();
+            if (tag === 'script' || tag === 'link') record('TD-009', 'resource-load', 'No se pudo cargar un recurso externo (' + tag + ').');
+            return;
+          }
+          record('TD-009', 'window-error', 'Error JavaScript inesperado: ' + (event && event.message ? event.message : 'error no detallado'));
+        } catch (_) {}
+      }, true);
+      window.addEventListener('unhandledrejection', function (event) {
+        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar: ' + (event && event.reason && event.reason.message ? event.reason.message : 'rechazo no detallado')); } catch (_) {}
+      });
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -725,6 +845,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.0</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -981,6 +1102,10 @@
         .replace(/'/g, '&#39;');
     }
 
+    function mtdDiag(code, phase, message) {
+      try { if (window.MTD_DIAG) window.MTD_DIAG.record(code, phase, message); } catch (_) {}
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       // 1. Acceso directo con la clave pública configurada
       let anonKey = (typeof SUPABASE_ANON_KEY === 'string') ? SUPABASE_ANON_KEY.trim() : "";
@@ -1003,6 +1128,7 @@
       }
 
       if (!anonKey) {
+        mtdDiag('TD-002', 'supabase-config', 'No se encontró la clave pública necesaria para conectar con Supabase.');
         document.getElementById('productsGrid').innerHTML = `
           <div class="empty-state">
             <p>⚠️ Catálogo en mantenimiento.</p>
@@ -1012,6 +1138,11 @@
         return;
       }
 
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        mtdDiag('TD-002', 'supabase-bootstrap', 'La librería de Supabase no está disponible.');
+        document.getElementById('productsGrid').innerHTML = '<div class="empty-state"><p>⚠️ No se pudo conectar con el catálogo.</p></div>';
+        return;
+      }
       supabaseClient = window.supabase.createClient(SUPABASE_URL, anonKey, {
         auth: { persistSession: true, autoRefreshToken: true }
       });
@@ -1021,7 +1152,7 @@
       let requestedSlug = urlParams.get('tienda') || urlParams.get('slug') || '';
       requestedSlug = requestedSlug.trim().toLowerCase().replace(/^\/+/, '');
 
-      await initializeCatalog(requestedSlug).then(() => setupPendingRecovery());
+      await initializeCatalog(requestedSlug).then(() => { try { setupPendingRecovery(); } catch (_) { mtdDiag('TD-006', 'pending-recovery', 'No se pudo recuperar el estado de confirmación del pedido.'); } });
     });
 
     function showUnavailable() {
@@ -1034,6 +1165,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.0' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1041,15 +1173,22 @@
       try {
         const { data, error } = await supabaseClient.rpc('get_public_catalog', { p_slug: requestedSlug });
         if (error) {
+          mtdDiag('TD-002', 'catalog-rpc', 'Falló la consulta del catálogo en Supabase.');
           showError("Error consultando la tienda: " + error.message);
           return;
         }
-        if (!data || data.status !== 'SUCCESS') {
+        if (data && data.status === 'STORE_NOT_AVAILABLE') {
           showUnavailable();
           return;
         }
-        await selectStore(data);
+        if (!data || data.status !== 'SUCCESS' || !data.store || !Array.isArray(data.categories) || !Array.isArray(data.products)) {
+          mtdDiag('TD-003', 'catalog-response', 'Supabase devolvió una estructura de catálogo inesperada.');
+          showError('No se pudo procesar el catálogo. Intenta nuevamente.');
+          return;
+        }
+        try { await selectStore(data); } catch (_) { mtdDiag('TD-003', 'catalog-render', 'No se pudo procesar o mostrar el catálogo.'); showError('No se pudo mostrar el catálogo.'); }
       } catch (err) {
+        mtdDiag('TD-001', 'catalog-initialize', 'Ocurrió un fallo técnico al inicializar la tienda.');
         showError("Excepción técnica al inicializar: " + (err.message || err));
       }
     }
@@ -1057,6 +1196,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.0' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1307,6 +1447,7 @@
     async function resolveSent(subtract) {
       const sid = activePendingStoreId;
       if (!sid) return;
+      try {
       await withOrderLock(sid, async () => {
         let p = readPending(sid);
         if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
@@ -1319,11 +1460,13 @@
         // 1. Historial primero, verificado por orderId
         if (p.state === 'PENDING') {
           if (!writeHistory(p)) {
+            mtdDiag('TD-008', 'write-history', 'No se pudo guardar o verificar el historial del pedido.');
             alert("No se pudo registrar tu pedido en el historial. Tu carrito se ha conservado. Intenta de nuevo.");
             return;
           }
           p.state = 'HISTORY_OK';
           if (!writePending(p)) {
+            mtdDiag('TD-006', 'pending-state-recovery', 'No se pudo guardar el estado recuperado de la confirmación.');
             alert("No se pudo guardar el estado del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
             return;
           }
@@ -1389,6 +1532,9 @@
         closeProductDetailModal();
         showOrderSuccessBanner();
       });
+      } catch (_) {
+        mtdDiag('TD-006', 'pending-recovery', 'Falló la recuperación o resolución de la confirmación del pedido.');
+      }
     }
 
     function restoreOrphanSnapshot(sid) {
@@ -1528,6 +1674,7 @@
         if (error) throw error;
         return data;
       } catch (err) {
+        mtdDiag('TD-004', 'cart-validation', 'Falló la validación técnica del carrito con Supabase.');
         alert("No se pudo verificar la disponibilidad por un problema de conexión. Tu carrito se ha conservado intacto; intenta nuevamente.");
         return null;
       }
@@ -1617,7 +1764,7 @@
 
     // v2.3.5: una sola ejecución por pestaña y bloqueo coordinado por tienda.
     async function sendWhatsAppOrder() {
-      if (sendInFlight) return;
+      if (sendInFlight) { mtdDiag('TD-007', 'send-duplicate-blocked', 'Se bloqueó un segundo intento mientras otro envío estaba en curso.'); return; }
       if (!currentStore) return;
       sendInFlight = true;
       const sendButton = document.getElementById('btnSendWhatsApp');
@@ -1625,6 +1772,7 @@
       try {
         await withSendLock(currentStore.id, sendWhatsAppOrderInternal);
       } catch (err) {
+        mtdDiag('TD-005', 'whatsapp-send', 'Falló la preparación o el inicio del envío a WhatsApp.');
         alert((err && err.message) ? err.message : 'No se pudo iniciar el envío. Tu carrito se conserva intacto.');
       } finally {
         sendInFlight = false;
