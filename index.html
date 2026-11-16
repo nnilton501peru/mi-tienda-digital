@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital index.html v3.6 | Diagnóstico local TD-002, TD-003, TD-009 -->
+<!-- Mi Tienda Digital index.html v3.7 | Diagnóstico local TD-002, TD-003, TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Panel v3.6</title>
+  <title>Mi Tienda Digital - Panel v3.7</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -48,6 +48,10 @@
             file: context.file, version: context.version,
             message: safeText(message), repetitions: 1, schema: SCHEMA
           };
+          var httpStatus = Number(options.statusCode);
+          if (Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599) item.statusCode = httpStatus;
+          var providerCode = String(options.errorCode == null ? '' : options.errorCode).trim();
+          if (/^[A-Za-z0-9_-]{1,40}$/.test(providerCode)) item.errorCode = providerCode;
           arr.unshift(item); arr = arr.slice(0, MAX);
           localStorage.setItem(key(), JSON.stringify(arr));
           last[sig] = { time: now, count: 1, id: item.incidentId };
@@ -106,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'index.html', version: '3.6' });
-      } catch (_) { setContext({ file: 'index.html', version: '3.6' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'index.html', version: '3.7' });
+      } catch (_) { setContext({ file: 'index.html', version: '3.7' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -116,11 +120,11 @@
             if (tag === 'script' || tag === 'link') record('TD-009', 'resource-load', 'No se pudo cargar un recurso externo (' + tag + ').');
             return;
           }
-          record('TD-009', 'window-error', 'Error JavaScript inesperado: ' + (event && event.message ? event.message : 'error no detallado'));
+          record('TD-009', 'window-error', 'Error JavaScript inesperado.');
         } catch (_) {}
       }, true);
       window.addEventListener('unhandledrejection', function (event) {
-        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar: ' + (event && event.reason && event.reason.message ? event.reason.message : 'rechazo no detallado')); } catch (_) {}
+        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar.'); } catch (_) {}
       });
     })();
   </script>
@@ -1097,7 +1101,7 @@
     <div class="auth-card">
       <div class="brand-header">
         <h1>Mi Tienda Digital</h1>
-        <span class="version-pill">Panel Comerciante v3.6</span>
+        <span class="version-pill">Panel Comerciante v3.7</span>
       </div>
 
       <form id="authForm" onsubmit="handleLogin(event)">
@@ -1121,7 +1125,7 @@
       <div class="top-store-info">
         <h2 id="headerStoreName">Mi Tienda</h2>
         <span id="headerStoreSlug" class="store-slug-badge">cargando...</span>
-        <span style="display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#1e293b;color:#38bdf8;font-size:.68rem;font-weight:600;">v3.6</span>
+        <span style="display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#1e293b;color:#38bdf8;font-size:.68rem;font-weight:600;">v3.7</span>
       </div>
       <button class="btn-logout" onclick="handleLogout()">Salir</button>
     </header>
@@ -1340,7 +1344,7 @@
     function refreshDiagnosticsPanel() {
       try {
         if (!window.MTD_DIAG || !currentStoreData) return;
-        window.MTD_DIAG.setContext({ storeId: currentStoreData.id, slug: currentStoreData.slug, userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.6' });
+        window.MTD_DIAG.setContext({ storeId: currentStoreData.id, slug: currentStoreData.slug, userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.7' });
         const items = window.MTD_DIAG.readFor(currentStoreData.id, currentStoreData.slug, currentSessionUser && currentSessionUser.id);
         const count = document.getElementById('mtdDiagCount');
         const list = document.getElementById('mtdDiagList');
@@ -1363,7 +1367,7 @@
           copy.addEventListener('click', async function () {
             try {
               const items = window.MTD_DIAG.readFor(currentStoreData.id, currentStoreData.slug, currentSessionUser && currentSessionUser.id);
-              const report = JSON.stringify({ store: currentStoreData.slug, version: 'index.html v3.6', schema: 1, incidents: items }, null, 2);
+              const report = JSON.stringify({ store: currentStoreData.slug, version: 'index.html v3.7', schema: 1, incidents: items }, null, 2);
               if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(report);
               else { const ta = document.createElement('textarea'); ta.value = report; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
               document.getElementById('mtdDiagStatus').textContent = 'Informe copiado. Contiene datos técnicos locales.';
@@ -1467,7 +1471,7 @@
     }
 
     async function loadStoreAndInitApp() {
-      try { window.MTD_DIAG.setContext({ userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.6' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.7' }); } catch (_) {}
       // Vinculación estricta y segura mediante owner_id autenticado (auth.uid())
       const { data: storeData, error: storeErr } = await supabaseClient
         .from('stores')
@@ -1482,7 +1486,7 @@
       }
 
       currentStoreData = storeData;
-      window.MTD_DIAG.setContext({ storeId: storeData.id, slug: storeData.slug, userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.6' });
+      window.MTD_DIAG.setContext({ storeId: storeData.id, slug: storeData.slug, userId: currentSessionUser && currentSessionUser.id, file: 'index.html', version: '3.7' });
 
       // Cargar categorías y productos
       await loadCategories();
@@ -1677,7 +1681,7 @@
         .order('sort_order', { ascending: true });
 
       if (error) {
-        window.MTD_DIAG.record('TD-002', 'load-categories', 'Falló la consulta de categorías en Supabase.');
+        window.MTD_DIAG.record('TD-002', 'load-categories', 'Falló la consulta de categorías en Supabase.', { statusCode: error.status, errorCode: error.code });
         console.error("Error al cargar categorías:", error);
         return;
       }
@@ -1851,7 +1855,7 @@
         .order('created_at', { ascending: false });
 
       if (error) {
-        window.MTD_DIAG.record('TD-002', 'load-products', 'Falló la consulta de productos en Supabase.');
+        window.MTD_DIAG.record('TD-002', 'load-products', 'Falló la consulta de productos en Supabase.', { statusCode: error.status, errorCode: error.code });
         console.error("Error al cargar productos:", error);
         return;
       }

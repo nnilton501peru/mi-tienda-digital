@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.0 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.1 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.0</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.1</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -48,6 +48,10 @@
             file: context.file, version: context.version,
             message: safeText(message), repetitions: 1, schema: SCHEMA
           };
+          var httpStatus = Number(options.statusCode);
+          if (Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599) item.statusCode = httpStatus;
+          var providerCode = String(options.errorCode == null ? '' : options.errorCode).trim();
+          if (/^[A-Za-z0-9_-]{1,40}$/.test(providerCode)) item.errorCode = providerCode;
           arr.unshift(item); arr = arr.slice(0, MAX);
           localStorage.setItem(key(), JSON.stringify(arr));
           last[sig] = { time: now, count: 1, id: item.incidentId };
@@ -106,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.0' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.0' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.1' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.1' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -116,11 +120,11 @@
             if (tag === 'script' || tag === 'link') record('TD-009', 'resource-load', 'No se pudo cargar un recurso externo (' + tag + ').');
             return;
           }
-          record('TD-009', 'window-error', 'Error JavaScript inesperado: ' + (event && event.message ? event.message : 'error no detallado'));
+          record('TD-009', 'window-error', 'Error JavaScript inesperado.');
         } catch (_) {}
       }, true);
       window.addEventListener('unhandledrejection', function (event) {
-        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar: ' + (event && event.reason && event.reason.message ? event.reason.message : 'rechazo no detallado')); } catch (_) {}
+        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar.'); } catch (_) {}
       });
     })();
   </script>
@@ -845,7 +849,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.0</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.1</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1102,8 +1106,8 @@
         .replace(/'/g, '&#39;');
     }
 
-    function mtdDiag(code, phase, message) {
-      try { if (window.MTD_DIAG) window.MTD_DIAG.record(code, phase, message); } catch (_) {}
+    function mtdDiag(code, phase, message, metadata) {
+      try { if (window.MTD_DIAG) window.MTD_DIAG.record(code, phase, message, metadata || {}); } catch (_) {}
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -1165,7 +1169,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.0' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.1' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1173,7 +1177,7 @@
       try {
         const { data, error } = await supabaseClient.rpc('get_public_catalog', { p_slug: requestedSlug });
         if (error) {
-          mtdDiag('TD-002', 'catalog-rpc', 'Falló la consulta del catálogo en Supabase.');
+          mtdDiag('TD-002', 'catalog-rpc', 'Falló la consulta del catálogo en Supabase.', { statusCode: error.status, errorCode: error.code });
           showError("Error consultando la tienda: " + error.message);
           return;
         }
@@ -1196,7 +1200,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.0' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.1' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1568,6 +1572,7 @@
         const p = readPending(sid);
         if (!p || p.orderId !== orderId) return;
         if (Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS) {
+          mtdDiag('TD-007', 'pending-other-tab-orphan', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
           alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Intenta de nuevo en unos minutos.");
           return;
         }
@@ -1618,6 +1623,7 @@
       }
       const recent = Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS;
       if (recent) {
+        mtdDiag('TD-007', 'pending-other-tab-active', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
         alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Vuelve a esa pestaña o intenta de nuevo en unos minutos.");
         return;
       }
@@ -1800,6 +1806,7 @@
       }
       const sid = currentStore.id;
       if (readPending(sid)) {
+        mtdDiag('TD-007', 'pending-confirmation-block', 'Se bloqueó un nuevo envío porque hay un pedido pendiente de confirmar.');
         alert("Tienes un pedido pendiente de confirmar para esta tienda. Se resolverá al volver a esta pestaña.");
         return;
       }
@@ -1826,6 +1833,7 @@
 
       // Segunda comprobación: otra pestaña pudo crear un pendiente mientras Supabase validaba.
       if (readPending(sid)) {
+        mtdDiag('TD-007', 'pending-send-block', 'Se bloqueó un envío duplicado porque ya existe un envío pendiente.');
         alert("Este pedido ya tiene un envío pendiente en esta tienda. Regresa a la pestaña que inició el envío para confirmar su estado.");
         return;
       }
