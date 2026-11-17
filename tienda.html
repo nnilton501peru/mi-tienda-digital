@@ -1,0 +1,2472 @@
+<!DOCTYPE html>
+<!-- Mi Tienda Digital tienda.html v2.4.4 | Diagnóstico local TD-001..TD-009 -->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.4</title>
+  <script>
+    /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
+    (function () {
+      'use strict';
+      var SCHEMA = 1, MAX = 30, DEDUPE_MS = 5000, last = Object.create(null);
+      var context = { storeId: null, slug: '', userId: null, file: '', version: '' };
+      function safeText(value) {
+        var s = String(value == null ? '' : value).replace(/https?:\/\/\S+/gi, '[url]')
+          .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo]')
+          .replace(/\b(?:\+?\d[\d\s().-]{7,}\d)\b/g, '[telefono]')
+          .replace(/eyJ[A-Za-z0-9._-]{20,}/g, '[token]');
+        return s.slice(0, 200);
+      }
+      function key() {
+        if (context.storeId) return 'mtd_diag_' + context.storeId;
+        if (context.slug) return 'mtd_diag_slug_' + context.slug;
+        if (context.userId) return 'mtd_diag_user_' + context.userId;
+        return 'mtd_diag_sin_tienda';
+      }
+      function record(code, phase, message, options) {
+        try {
+          options = options || {};
+          if (code === 'TD-007' && (options.silent === true)) return;
+          var now = Date.now(), sig = code + '|' + phase + '|' + safeText(message);
+          if (last[sig] && now - last[sig].time < DEDUPE_MS) {
+            last[sig].count++;
+            try {
+              var old = JSON.parse(localStorage.getItem(key()) || '[]');
+              var found = old.find(function (x) { return x.incidentId === last[sig].id; });
+              if (found) { found.repetitions = last[sig].count; localStorage.setItem(key(), JSON.stringify(old)); }
+            } catch (_) {}
+            return;
+          }
+          var arr;
+          try { arr = JSON.parse(localStorage.getItem(key()) || '[]'); if (!Array.isArray(arr)) arr = []; } catch (_) { arr = []; }
+          if (code === 'TD-007' && arr.filter(function (x) { return x.code === 'TD-007'; }).length >= 5) return;
+          var item = {
+            incidentId: 'd' + now.toString(36) + Math.random().toString(36).slice(2, 7),
+            code: code, phase: safeText(phase), date: new Date(now).toISOString(),
+            storeId: context.storeId || null, slug: context.slug || null,
+            file: context.file, version: context.version,
+            message: safeText(message), repetitions: 1, schema: SCHEMA
+          };
+          var httpStatus = Number(options.statusCode);
+          if (Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599) item.statusCode = httpStatus;
+          var providerCode = String(options.errorCode == null ? '' : options.errorCode).trim();
+          if (/^[A-Za-z0-9_-]{1,40}$/.test(providerCode)) item.errorCode = providerCode;
+          arr.unshift(item); arr = arr.slice(0, MAX);
+          localStorage.setItem(key(), JSON.stringify(arr));
+          last[sig] = { time: now, count: 1, id: item.incidentId };
+        } catch (_) { /* diagnóstico aislado: no propagar */ }
+      }
+      function setContext(data) {
+        try {
+          data = data || {};
+          var previousSlug = context.slug;
+          var previousUser = context.userId;
+          if (data.slug) context.slug = String(data.slug).trim().toLowerCase().replace(/^\/+|\/+$/g, '').slice(0, 100);
+          if (data.userId) context.userId = String(data.userId);
+          if (data.file) context.file = data.file;
+          if (data.version) context.version = data.version;
+          if (data.storeId) {
+            var destination = 'mtd_diag_' + String(data.storeId);
+            var sources = [];
+            if (previousSlug) sources.push('mtd_diag_slug_' + previousSlug);
+            if (previousUser) sources.push('mtd_diag_user_' + previousUser);
+            var merged = [], ids = Object.create(null);
+            try { var existing = JSON.parse(localStorage.getItem(destination) || '[]'); if (Array.isArray(existing)) existing.forEach(function (x) { if (x && x.incidentId && !ids[x.incidentId]) { ids[x.incidentId] = true; merged.push(x); } }); } catch (_) {}
+            sources.forEach(function (source) {
+              try {
+                var pending = JSON.parse(localStorage.getItem(source) || '[]');
+                if (!Array.isArray(pending) || !pending.length) return;
+                pending.forEach(function (x) { if (x && x.incidentId && !ids[x.incidentId]) { ids[x.incidentId] = true; merged.push(x); } });
+                localStorage.setItem(destination, JSON.stringify(merged.slice(0, MAX)));
+                var check = JSON.parse(localStorage.getItem(destination) || '[]');
+                var verified = Array.isArray(check) && pending.every(function (x) { return !x || !x.incidentId || check.some(function (y) { return y.incidentId === x.incidentId; }); });
+                if (verified) localStorage.removeItem(source);
+              } catch (_) { /* conservar provisional si no se pudo verificar */ }
+            });
+            context.storeId = String(data.storeId);
+          }
+        } catch (_) {}
+      }
+      function readFor(storeId, slug, userId) {
+        var all = [], seen = Object.create(null);
+        var keys = [];
+        if (storeId) keys.push('mtd_diag_' + storeId);
+        if (slug) keys.push('mtd_diag_slug_' + String(slug).replace(/^\/+|\/+$/g, '').toLowerCase());
+        if (userId) keys.push('mtd_diag_user_' + userId);
+        keys.forEach(function (k) {
+          try { var part = JSON.parse(localStorage.getItem(k) || '[]'); if (Array.isArray(part)) part.forEach(function (x) { if (x && x.incidentId && !seen[x.incidentId]) { seen[x.incidentId] = true; all.push(x); } }); } catch (_) {}
+        });
+        return all.sort(function (x, y) { return String(y.date).localeCompare(String(x.date)); }).slice(0, MAX);
+      }
+      function clearFor(storeId, slug, userId) {
+        try {
+          if (storeId) localStorage.removeItem('mtd_diag_' + storeId);
+          if (slug) localStorage.removeItem('mtd_diag_slug_' + String(slug).replace(/^\/+|\/+$/g, '').toLowerCase());
+          if (userId) localStorage.removeItem('mtd_diag_user_' + userId);
+        } catch (_) {}
+      }
+      var api = { record: record, setContext: setContext, readFor: readFor, clearFor: clearFor };
+      window.MTD_DIAG = api;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.4' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.4' }); }
+      window.addEventListener('error', function (event) {
+        try {
+          var target = event && event.target;
+          if (target && (target.src || target.href)) {
+            var tag = String(target.tagName || '').toLowerCase();
+            if (tag === 'script' || tag === 'link') record('TD-009', 'resource-load', 'No se pudo cargar un recurso externo (' + tag + ').');
+            return;
+          }
+          record('TD-009', 'window-error', 'Error JavaScript inesperado.');
+        } catch (_) {}
+      }, true);
+      window.addEventListener('unhandledrejection', function (event) {
+        try { record('TD-009', 'unhandled-rejection', 'Promesa rechazada sin gestionar.'); } catch (_) {}
+      });
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --header-bg: #008f9e;
+      --header-sub: #00727e;
+      --body-bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --primary-btn: #0277bd;
+      --primary-btn-hover: #01579b;
+      --cart-bar-bg: #fffde7;
+      --cart-bar-border: #fef08a;
+      --cart-btn-orange: #ff7043;
+      --cart-btn-orange-hover: #f4511e;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --whatsapp-green: #25d366;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--body-bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 95px;
+    }
+
+    /* BARRA SUPERIOR CIAN ESTILO DELIVERY PLAYAZO */
+    .top-header {
+      background: var(--header-bg);
+      color: #ffffff;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .btn-mis-pedidos {
+      background: var(--header-sub);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 7px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s;
+    }
+
+    .btn-mis-pedidos:active {
+      background: #005a63;
+    }
+
+    .header-center {
+      text-align: center;
+      flex: 1;
+      padding: 0 8px;
+    }
+
+    .store-main-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .store-sub-slug {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+      display: block;
+      margin-top: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .btn-header-action {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #ffffff;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* CONTENEDOR GENERAL */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 12px;
+      flex: 1;
+    }
+
+    /* BANNER DE PEDIDO ENVIADO */
+    .order-success-banner {
+      display: none;
+      background: #e6f7ee;
+      border: 1.5px solid #00a650;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .order-success-banner h4 {
+      color: #008744;
+      font-size: 0.98rem;
+      font-weight: 800;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .order-success-banner p {
+      color: #2e6945;
+      font-size: 0.84rem;
+      line-height: 1.3;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SELECTOR RÁPIDO DE TIENDAS */
+    .stores-bar {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      padding: 8px 12px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .stores-bar::-webkit-scrollbar { display: none; }
+
+    .stores-bar-title {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .stores-chips {
+      display: flex;
+      gap: 6px;
+    }
+
+    .store-chip {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .store-chip.active {
+      background: var(--header-bg);
+      border-color: var(--header-bg);
+      color: #ffffff;
+    }
+
+    /* BURBUJAS DESLIZABLES DE CATEGORÍAS (ESTILO PLAYAZO) */
+    .categories-bubble-wrapper {
+      margin-bottom: 14px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px 8px;
+    }
+    .categories-bubble-wrapper::-webkit-scrollbar { display: none; }
+
+    .categories-bubble-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .category-bubble-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      width: 78px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .bubble-box {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      transition: all 0.15s;
+    }
+
+    .category-bubble-item.active .bubble-box {
+      border: 2.5px solid var(--header-bg);
+      box-shadow: 0 0 0 4px rgba(0,143,158,0.28);
+    }
+
+    .bubble-box svg {
+      color: var(--header-bg);
+    }
+
+    .bubble-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .bubble-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.2;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .category-bubble-item.active .bubble-title {
+      color: var(--header-bg);
+      font-weight: 800;
+    }
+
+    /* GRID DE PRODUCTOS EN 2 COLUMNAS (ESTILO PLAYAZO) */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding-bottom: 20px;
+    }
+
+    .prod-card {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: transform 0.15s;
+      position: relative;
+    }
+
+    .prod-card:active {
+      transform: scale(0.985);
+    }
+
+    .prod-img-box {
+      width: 100%;
+      height: 145px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      border-bottom: 1px solid #f1f5f9;
+      position: relative;
+    }
+
+    .prod-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .prod-img-empty {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #cbd5e1;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+
+    .prod-info {
+      padding: 10px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    .prod-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .prod-cat-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .prod-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.25;
+      min-height: 38px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .prod-price {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 6px 0 10px;
+    }
+
+    .badge-agotado {
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 4px;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* BOTÓN AGREGAR Y CONTROL DE CANTIDAD EN TARJETA */
+    .btn-add-playazo {
+      background: var(--primary-btn);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+      transition: background 0.15s;
+    }
+
+    .btn-add-playazo:active {
+      background: var(--primary-btn-hover);
+    }
+
+    .qty-card-control {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 2px 4px;
+      width: 100%;
+    }
+
+    .btn-card-qty {
+      background: #ffffff;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .btn-card-qty:active {
+      background: #e2e8f0;
+    }
+
+    .card-qty-num {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--primary-btn);
+    }
+
+    /* BARRA FLOTANTE INFERIOR ESTILO PLAYAZO (FONDO CREMA / BOTÓN NARANJA) */
+    .playazo-cart-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--cart-bar-bg);
+      border-top: 1.5px solid var(--cart-bar-border);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      max-width: 600px;
+      margin: 0 auto;
+      box-shadow: 0 -3px 12px rgba(0,0,0,0.08);
+    }
+
+    .cart-bar-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cart-units-text {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .cart-price-text {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: #00707c;
+      letter-spacing: -0.3px;
+    }
+
+    .btn-ver-carrito-orange {
+      background: var(--cart-btn-orange);
+      color: #ffffff;
+      border: none;
+      padding: 11px 20px;
+      border-radius: 12px;
+      font-size: 0.98rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 3px 8px rgba(255,112,67,0.35);
+      transition: background 0.15s;
+    }
+
+    .btn-ver-carrito-orange:active {
+      background: var(--cart-btn-orange-hover);
+      transform: scale(0.97);
+    }
+
+    /* MODAL DE CARRITO Y CHECKOUT */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 200;
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+    }
+
+    .modal-sheet {
+      background: #ffffff;
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.22s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 1.6rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .cart-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      gap: 10px;
+    }
+
+    .cart-item-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .cart-item-sub {
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+
+    .checkout-form {
+      border-top: 1.5px solid #f1f5f9;
+      padding-top: 14px;
+    }
+
+    .checkout-form label {
+      display: block;
+      font-size: 0.85rem;
+      color: #334155;
+      margin-bottom: 5px;
+      font-weight: 700;
+    }
+
+    .checkout-form input,
+    .checkout-form textarea {
+      width: 100%;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      color: #0f172a;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .checkout-form input:focus,
+    .checkout-form textarea:focus {
+      border-color: var(--header-bg);
+      background: #ffffff;
+    }
+
+    .modal-footer {
+      padding: 14px 18px;
+      border-top: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .btn-send-whatsapp {
+      background: #25d366;
+      color: #ffffff;
+      width: 100%;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(37,211,102,0.35);
+    }
+
+    .btn-send-whatsapp:active {
+      background: #1eb956;
+      transform: scale(0.98);
+    }
+
+    .btn-send-whatsapp:disabled {
+      opacity: 0.65;
+      cursor: wait;
+      transform: none;
+    }
+
+    /* MODAL MIS PEDIDOS */
+    .history-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .history-date {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .history-total {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #00707c;
+      margin-top: 6px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 35px 16px;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      grid-column: span 2;
+    }
+
+    .error-box {
+      background: #fef2f2;
+      border: 1.5px solid #ef4444;
+      color: #991b1b;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      margin: 12px 0;
+      text-align: left;
+    }
+    .btn-clear-history {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .btn-clear-history:active {
+      background: #fecaca;
+      transform: scale(0.98);
+    }
+    /* v2.4.4: buscador de productos (sin sticky) */
+    .product-search-wrap {
+      position: relative;
+      padding: 4px 12px 12px;
+      background: #f8fafc;
+    }
+    .product-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 44px 11px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 15px;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .product-search:focus {
+      border-color: var(--header-bg);
+      box-shadow: 0 0 0 3px rgba(0,143,158,0.18);
+    }
+    .product-search::-webkit-search-cancel-button,
+    .product-search::-webkit-search-decoration {
+      -webkit-appearance: none;
+      display: none;
+    }
+    .product-search-clear {
+      position: absolute;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #334155;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA SUPERIOR CIAN ESTILO DELIVERY PLAYAZO -->
+  <header class="top-header">
+    <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
+    <div class="header-center">
+      <h1 id="storeTitle" class="store-main-title"></h1>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.4</span>
+      <span id="storeBadge" class="store-sub-slug"></span>
+    </div>
+    <div class="header-right">
+      <button class="btn-header-action" onclick="window.location.reload()" title="Refrescar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="container">
+    
+    <!-- BANNER DE ÉXITO TRAS PEDIDO -->
+    <div id="orderSuccessBanner" class="order-success-banner">
+      <h4>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        ¡Pedido enviado a WhatsApp con éxito!
+      </h4>
+      <p>Tu carrito ha quedado libre para una nueva compra. Continúa la coordinación directamente desde tu conversación de WhatsApp.</p>
+    </div>
+
+    <!-- BURBUJAS DESLIZABLES DE CATEGORÍAS (ESTILO PLAYAZO) -->
+    <div class="categories-bubble-wrapper">
+      <div class="categories-bubble-row" id="categoriesBubbleRow">
+        <div class="category-bubble-item active" onclick="filterByCategory('all', this)">
+          <div class="bubble-box">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          </div>
+          <span class="bubble-title">Todas</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUSCADOR DE PRODUCTOS (v2.4.4) -->
+    <div class="product-search-wrap">
+      <input type="search" id="productSearch" class="product-search" placeholder="Buscar productos..." autocomplete="off" oninput="onProductSearchInput(this.value)">
+      <button type="button" id="productSearchClear" class="product-search-clear" onclick="clearProductSearch()" aria-label="Borrar búsqueda">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <!-- GRID DE PRODUCTOS EN 2 COLUMNAS (ESTILO PLAYAZO) -->
+    <div class="products-grid" id="productsGrid">
+      <div class="empty-state">Buscando productos...</div>
+    </div>
+  </div>
+
+  <!-- BARRA FLOTANTE DEL CARRITO ESTILO PLAYAZO (FONDO CREMA / BOTÓN NARANJA) -->
+  <div class="playazo-cart-bar" id="cartBar">
+    <div class="cart-bar-left">
+      <span class="cart-units-text" id="cartCountLabel">0 unidades</span>
+      <span class="cart-price-text" id="cartTotalLabel">S/ 0.00</span>
+    </div>
+    <button class="btn-ver-carrito-orange" onclick="openCartModal()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+      <span>Ver carrito</span>
+    </button>
+  </div>
+
+  <!-- MODAL / DRAWER DEL CARRITO -->
+  <div class="modal-overlay" id="cartModal" onclick="closeCartModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Tu Pedido</h2>
+        <button class="btn-close" onclick="closeCartModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="cart-items-list" id="cartItemsList">
+          <!-- Items del carrito -->
+        </div>
+
+        <div id="cartEstimatedTotal" style="display:none; justify-content:space-between; align-items:center; margin:12px 0; padding:12px 14px; border-radius:12px; background:#f1f5f9; border:1px solid #e2e8f0;">
+          <span style="font-weight:700; color:#334155; font-size:.9rem;">TOTAL ESTIMADO</span>
+          <strong id="cartEstimatedTotalValue" style="font-size:1.15rem; color:#0f172a;">S/ 0.00</strong>
+        </div>
+
+        <div class="checkout-form">
+          <label for="custName">Tu Nombre *</label>
+          <input type="text" id="custName" placeholder="Ej. Juan Pérez" required>
+
+          <label for="custAddress">Dirección o Referencia de Entrega</label>
+          <input type="text" id="custAddress" placeholder="Ej. Jr. Comercio 123 o Para recoger">
+
+          <label for="custNotes">Notas para el pedido (opcional)</label>
+          <textarea id="custNotes" rows="2" placeholder="Ej. Traer cambio de 50 o entregar por la tarde..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-send-whatsapp" id="btnSendWhatsApp" onclick="sendWhatsAppOrder()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span>Confirmar y Enviar a WhatsApp</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- MODAL DETALLE DE PRODUCTO (POPUP AL TOCAR PRODUCTO) -->
+  <div class="modal-overlay" id="productDetailModal" onclick="closeProductDetailModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title" id="detailCatLabel">Detalle del Producto</h2>
+        <button class="btn-close" onclick="closeProductDetailModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding-bottom: 24px;">
+        <div style="width:100%; height:230px; background:#ffffff; border-radius:14px; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:12px; padding:10px;">
+          <img id="detailImg" src="" alt="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;">
+          <div id="detailNoImg" style="display:none; color:#cbd5e1; align-items:center; justify-content:center; flex-direction:column; gap:6px;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span style="font-size:0.82rem; color:#94a3b8;">Sin fotografía</span>
+          </div>
+        </div>
+
+        <h3 id="detailName" style="font-size:1.22rem; font-weight:800; color:#0f172a; line-height:1.25; margin-bottom:6px;"></h3>
+        <div id="detailPrice" style="font-size:1.45rem; font-weight:900; color:#00707c; margin-bottom:12px;"></div>
+
+        <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:16px;">
+          <h4 style="font-size:0.8rem; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Descripción y Especificaciones:
+          </h4>
+          <p id="detailDesc" style="font-size:0.92rem; color:#1e293b; line-height:1.45; white-space:pre-line;"></p>
+        </div>
+
+        <div id="detailActionBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MIS PEDIDOS -->
+  <div class="modal-overlay" id="ordersModal" onclick="closeOrdersModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Mis Pedidos Recientes</h2>
+        <button class="btn-close" onclick="closeOrdersModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" id="ordersModalBody">
+        <!-- Historial de pedidos -->
+      </div>
+
+      <div class="modal-footer" id="ordersModalFooter" style="display:none; padding:14px 18px; border-top:1px solid #f1f5f9; background:#ffffff;">
+        <button type="button" class="btn-clear-history" onclick="clearOrdersHistory()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+          <span>Eliminar todo el historial</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v2.3.2: CARRITO PENDIENTE DE OTRA TIENDA (aviso visible; nada se mueve sin tu toque) -->
+  <div class="modal-overlay" id="pendingCartPanel">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title" id="pendingCartTitle">Carrito pendiente</h2>
+        <button class="btn-close" onclick="closePendingCartPanel()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.95rem; color:#1e293b; line-height:1.4;">Tienes productos de otra tienda en tu carrito. Para agregar productos aquí, primero debes vaciar ese carrito o volver a su tienda.</p>
+      </div>
+      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
+        <a id="pendingCartBackLink" href="#" style="display:block; text-align:center; padding:12px; border-radius:10px; background:#0ea5e9; color:#fff; font-weight:700; text-decoration:none;">Volver a la tienda anterior</a>
+        <button class="btn-clear-history" onclick="emptyPendingCart()">Vaciar carrito anterior</button>
+        <button class="btn-add-playazo" style="background:#64748b;" onclick="closePendingCartPanel()">Seguir aquí sin cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v2.3.4: REVISIÓN DEL CARRITO (precios y productos no disponibles; nada se borra sin tu confirmación) -->
+  <div class="modal-overlay" id="reviewCartModal">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Revisar mi carrito</h2>
+        <button class="btn-close" onclick="closeReviewModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem; color:#475569;">Estos productos necesitan tu confirmación antes de enviar el pedido.</p>
+        <div id="reviewCartList" class="cart-items-list"></div>
+      </div>
+      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn-add-playazo" onclick="applyReviewChanges()">Aplicar cambios y revisar de nuevo</button>
+        <button class="btn-add-playazo" style="background:#64748b;" onclick="closeReviewModal()">Cancelar, conservar mi carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v2.3.4: PREGUNTA DE ENVÍO (cerrar con la X no borra nada) -->
+  <div class="modal-overlay" id="pendingQuestionModal">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Pedido pendiente</h2>
+        <button class="btn-close" onclick="closeSentQuestion()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="pendingQuestionText" style="font-size:0.95rem; color:#1e293b; line-height:1.4;"></p>
+      </div>
+      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn-send-whatsapp" id="pendingQuestionYes">Sí, ya lo envié</button>
+        <button class="btn-add-playazo" id="pendingQuestionNo" style="background:#64748b;">Todavía no lo envié</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://lwlduhwibscwrhhwktic.supabase.co";
+    const STORAGE_KEY_V13 = "mi_tienda_storage_v1.3_data";
+    // Clave pública (anon / public) - Conexión universal sin depender de localStorage ni ?key=
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3bGR1aHdpYnNjd3JoaHdrdGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2Mjg0NzMsImV4cCI6MjEwOTIwNDQ3M30.AU3hUtgDokB6FCTMA0xJayhLDewtkhAhsyCFqsA16z8";
+
+    let supabaseClient = null;
+    let allStores = [];
+    let cartOriginName = '';
+    let cartOriginSlug = '';
+    let currentStore = null;
+    let categoriesList = [];
+    let categoriesMap = {};
+    let productsList = [];
+    let currentFilter = 'all';
+    let productSearchTerm = '';
+    let productSearchTimer = null;
+
+    // Carrito en memoria vinculado a una única tienda
+    let cart = {};
+    let cartStoreId = null;
+
+    function saveActiveCart() {
+      try {
+        if (cart && Object.keys(cart).length > 0 && cartStoreId) {
+          if (currentStore && currentStore.id === cartStoreId) {
+            cartOriginName = currentStore.name || '';
+            cartOriginSlug = currentStore.slug || '';
+          }
+          sessionStorage.setItem('playazo_active_cart', JSON.stringify(cart));
+          sessionStorage.setItem('playazo_active_cart_store_id', cartStoreId);
+          sessionStorage.setItem('playazo_active_cart_store_name', cartOriginName);
+          sessionStorage.setItem('playazo_active_cart_store_slug', cartOriginSlug);
+        } else {
+          sessionStorage.removeItem('playazo_active_cart');
+          sessionStorage.removeItem('playazo_active_cart_store_id');
+          sessionStorage.removeItem('playazo_active_cart_store_name');
+          sessionStorage.removeItem('playazo_active_cart_store_slug');
+        }
+      } catch (e) {}
+    }
+
+    function loadActiveCart() {
+      try {
+        const savedCart = sessionStorage.getItem('playazo_active_cart');
+        const savedStoreId = sessionStorage.getItem('playazo_active_cart_store_id');
+        if (savedCart && savedStoreId) {
+          cart = JSON.parse(savedCart) || {};
+          cartStoreId = savedStoreId;
+          cartOriginName = sessionStorage.getItem('playazo_active_cart_store_name') || '';
+          cartOriginSlug = sessionStorage.getItem('playazo_active_cart_store_slug') || '';
+        }
+      } catch (e) {}
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function mtdDiag(code, phase, message, metadata) {
+      try { if (window.MTD_DIAG) window.MTD_DIAG.record(code, phase, message, metadata || {}); } catch (_) {}
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      // 1. Acceso directo con la clave pública configurada
+      let anonKey = (typeof SUPABASE_ANON_KEY === 'string') ? SUPABASE_ANON_KEY.trim() : "";
+
+      const urlParams = new URLSearchParams(window.location.search);
+
+      // Respaldo secundario solo en caso de que la clave estuviese vacía durante desarrollo
+      if (!anonKey) {
+        if (urlParams.get('key')) {
+          anonKey = urlParams.get('key');
+        } else {
+          const saved = localStorage.getItem(STORAGE_KEY_V13);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (parsed.key) anonKey = parsed.key;
+            } catch(e) {}
+          }
+        }
+      }
+
+      if (!anonKey) {
+        mtdDiag('TD-002', 'supabase-config', 'No se encontró la clave pública necesaria para conectar con Supabase.');
+        document.getElementById('productsGrid').innerHTML = `
+          <div class="empty-state">
+            <p>⚠️ Catálogo en mantenimiento.</p>
+            <p style="font-size:0.8rem; margin-top:8px;">No se encontró la clave pública de conexión.</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        mtdDiag('TD-002', 'supabase-bootstrap', 'La librería de Supabase no está disponible.');
+        document.getElementById('productsGrid').innerHTML = '<div class="empty-state"><p>⚠️ No se pudo conectar con el catálogo.</p></div>';
+        return;
+      }
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      });
+
+      loadActiveCart();
+
+      let requestedSlug = urlParams.get('tienda') || urlParams.get('slug') || '';
+      requestedSlug = requestedSlug.trim().toLowerCase().replace(/^\/+/, '');
+
+      await initializeCatalog(requestedSlug).then(() => { try { setupPendingRecovery(); } catch (_) { mtdDiag('TD-006', 'pending-recovery', 'No se pudo recuperar el estado de confirmación del pedido.'); } });
+    });
+
+    function showUnavailable() {
+      document.getElementById('storeTitle').innerText = "TIENDA NO DISPONIBLE";
+      document.getElementById('storeBadge').innerText = "";
+      document.getElementById('categoriesBubbleRow').innerHTML = '';
+      document.getElementById('productsGrid').innerHTML = '<div class="empty-state"><b>TIENDA NO DISPONIBLE</b></div>';
+      document.getElementById('cartBar').style.display = 'none';
+    }
+
+    async function initializeCatalog(requestedSlug) {
+      // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.4' }); } catch (_) {}
+      if (!requestedSlug) {
+        showUnavailable();
+        return;
+      }
+      try {
+        const { data, error } = await supabaseClient.rpc('get_public_catalog', { p_slug: requestedSlug });
+        if (error) {
+          mtdDiag('TD-002', 'catalog-rpc', 'Falló la consulta del catálogo en Supabase.', { statusCode: error.status, errorCode: error.code });
+          showError("Error consultando la tienda: " + error.message);
+          return;
+        }
+        if (data && data.status === 'STORE_NOT_AVAILABLE') {
+          showUnavailable();
+          return;
+        }
+        if (!data || data.status !== 'SUCCESS' || !data.store || !Array.isArray(data.categories) || !Array.isArray(data.products)) {
+          mtdDiag('TD-003', 'catalog-response', 'Supabase devolvió una estructura de catálogo inesperada.');
+          showError('No se pudo procesar el catálogo. Intenta nuevamente.');
+          return;
+        }
+        try { await selectStore(data); } catch (_) { mtdDiag('TD-003', 'catalog-render', 'No se pudo procesar o mostrar el catálogo.'); showError('No se pudo mostrar el catálogo.'); }
+      } catch (err) {
+        mtdDiag('TD-001', 'catalog-initialize', 'Ocurrió un fallo técnico al inicializar la tienda.');
+        showError("Excepción técnica al inicializar: " + (err.message || err));
+      }
+    }
+
+    async function selectStore(catalogData) {
+      // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
+      currentStore = catalogData.store;
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.4' });
+      document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
+      document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
+
+      productsList = catalogData.products || [];
+      categoriesList = catalogData.categories || [];
+      categoriesMap = {};
+      categoriesList.forEach(c => { categoriesMap[c.id] = c.name; });
+      // v2.4.4: al cargar una tienda, la búsqueda anterior se limpia
+      productSearchTerm = '';
+      clearTimeout(productSearchTimer);
+      const psInput = document.getElementById('productSearch');
+      if (psInput) psInput.value = '';
+      const psClear = document.getElementById('productSearchClear');
+      if (psClear) psClear.style.display = 'none';
+
+      renderCategoryFilter();
+      renderProducts();
+      updateCartBar();
+      if (cartBlockedByOther()) showPendingCartPanel();
+    }
+
+    // ===== v2.3.2: carrito pendiente de otra tienda (sin redirecciones automáticas) =====
+    function cartBlockedByOther() {
+      return Object.keys(cart).length > 0 && !!cartStoreId && !!currentStore && cartStoreId !== currentStore.id;
+    }
+
+    function showPendingCartPanel() {
+      const name = cartOriginName || 'otra tienda';
+      document.getElementById('pendingCartTitle').innerText = "Carrito pendiente de " + name;
+      document.getElementById('pendingCartBackLink').innerText = "Volver a " + name;
+      const link = document.getElementById('pendingCartBackLink');
+      link.href = cartOriginSlug ? ('?tienda=' + encodeURIComponent(cartOriginSlug)) : '#';
+      document.getElementById('pendingCartPanel').style.display = 'flex';
+    }
+
+    function closePendingCartPanel() {
+      document.getElementById('pendingCartPanel').style.display = 'none';
+    }
+
+    function emptyPendingCart() {
+      // Solo se ejecuta si el cliente lo pide expresamente
+      if (!confirm("¿Vaciar el carrito de " + (cartOriginName || 'la otra tienda') + "? Esta acción no se puede deshacer.")) return;
+      cart = {};
+      cartStoreId = null;
+      cartOriginName = '';
+      cartOriginSlug = '';
+      saveActiveCart();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+      closePendingCartPanel();
+    }
+
+    function historyKey() {
+      // v2.3.3: historial separado por tienda. La clave antigua 'playazo_orders_history' no se borra ni se muestra.
+      return 'playazo_orders_history_' + (currentStore ? currentStore.id : 'sin_tienda');
+    }
+
+    // ===== v2.3.5: recuperación fiable de confirmación y bloqueo de envíos simultáneos =====
+    const PENDING_STALE_MS = 30000;
+    let myToken = null;
+    let activePendingStoreId = null;
+    let activeOrderId = null;
+    let heartbeatTimer = null;
+    let lastPayloadIds = [];
+    let questionShown = false;
+    let visibilityBound = false;
+    let ownershipLost = null;
+    let pendingQuestionTimer = null;
+    let sendInFlight = false;
+
+    function getTabId() {
+      let id = null;
+      try { id = sessionStorage.getItem('playazo_tab_id'); } catch (e) {}
+      if (!id) {
+        id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        try { sessionStorage.setItem('playazo_tab_id', id); } catch (e) {}
+      }
+      return id;
+    }
+
+    function pendingKey(storeId) { return 'playazo_pending_order_' + storeId; }
+    function tokenKey(storeId) { return 'playazo_token_' + storeId; }
+
+    function newToken() {
+      return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12) + '-' + Math.random().toString(36).slice(2, 8);
+    }
+
+    function readPending(storeId) {
+      try {
+        const raw = localStorage.getItem(pendingKey(storeId));
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    function writePending(p) {
+      try {
+        localStorage.setItem(pendingKey(p.storeId), JSON.stringify(p));
+      } catch (e) { return false; }
+      const back = readPending(p.storeId);
+      return !!back && back.orderId === p.orderId && !!back.owner && !!p.owner && back.owner.token === p.owner.token;
+    }
+
+    function removePending(storeId) {
+      try { localStorage.removeItem(pendingKey(storeId)); } catch (e) {}
+    }
+
+    function ownsPending(p) {
+      return !!p && !!p.owner && !!myToken && p.owner.token === myToken;
+    }
+
+    function withOrderLock(storeId, fn) {
+      if (navigator.locks && navigator.locks.request) {
+        return navigator.locks.request('playazo_order_' + storeId, { mode: 'exclusive' }, () => fn());
+      }
+      return Promise.resolve().then(() => fn());
+    }
+
+    // Bloquea el envío por tienda. Web Locks coordina pestañas del mismo origen;
+    // el respaldo usa una reserva local con vencimiento y renovación periódica.
+    async function withSendLock(storeId, fn) {
+      if (navigator.locks && navigator.locks.request) {
+        return navigator.locks.request('playazo_send_' + storeId, { mode: 'exclusive' }, () => fn());
+      }
+
+      const key = 'playazo_send_lock_' + storeId;
+      const owner = newToken();
+      const waitUntil = Date.now() + 10000;
+      let acquired = false;
+      while (Date.now() < waitUntil) {
+        let current = null;
+        try { current = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+        if (!current || !current.expiresAt || current.expiresAt <= Date.now()) {
+          try {
+            localStorage.setItem(key, JSON.stringify({ owner: owner, expiresAt: Date.now() + 30000 }));
+            // Breve estabilización para que otra pestaña concurrente pueda sobrescribir
+            // su intento antes de que cualquiera considere adquirida la reserva.
+            await new Promise(resolve => setTimeout(resolve, 80));
+            const check = JSON.parse(localStorage.getItem(key) || 'null');
+            acquired = !!check && check.owner === owner;
+          } catch (e) {
+            throw new Error('No se pudo reservar el envío en este navegador.');
+          }
+          if (acquired) break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+      }
+      if (!acquired) throw new Error('Otro envío de esta tienda sigue en proceso. Espera unos segundos y vuelve a intentarlo.');
+
+      const renew = setInterval(() => {
+        try {
+          const check = JSON.parse(localStorage.getItem(key) || 'null');
+          if (check && check.owner === owner) {
+            localStorage.setItem(key, JSON.stringify({ owner: owner, expiresAt: Date.now() + 30000 }));
+          }
+        } catch (e) {}
+      }, 5000);
+      try {
+        return await fn();
+      } finally {
+        clearInterval(renew);
+        try {
+          const check = JSON.parse(localStorage.getItem(key) || 'null');
+          if (check && check.owner === owner) localStorage.removeItem(key);
+        } catch (e) {}
+      }
+    }
+
+    function snapshotCart() {
+      return Object.values(cart).map(it => ({ product: it.product, qty: it.qty }));
+    }
+
+    function historyHasOrder(storeId, orderId) {
+      try {
+        const h = JSON.parse(localStorage.getItem('playazo_orders_history_' + storeId) || '[]');
+        return h.some(x => x.orderId === orderId);
+      } catch (e) { return false; }
+    }
+
+    function writeHistory(p) {
+      try {
+        const key = 'playazo_orders_history_' + p.storeId;
+        const history = JSON.parse(localStorage.getItem(key) || '[]');
+        if (history.some(h => h.orderId === p.orderId)) return true;
+        history.unshift({
+          orderId: p.orderId,
+          date: new Date().toLocaleString('es-PE'),
+          store: p.storeName,
+          total: p.total,
+          items: p.sent.map(s => `${s.qty}x ${s.name}`)
+        });
+        localStorage.setItem(key, JSON.stringify(history.slice(0, 20)));
+      } catch (e) { return false; }
+      return historyHasOrder(p.storeId, p.orderId);
+    }
+
+    function startHeartbeat() {
+      stopHeartbeat();
+      heartbeatTimer = setInterval(() => {
+        const sid = activePendingStoreId;
+        if (!sid) { stopHeartbeat(); return; }
+        const p = readPending(sid);
+        if (!ownsPending(p)) { stopHeartbeat(); return; }
+        p.lastSeen = Date.now();
+        writePending(p);
+      }, 5000);
+    }
+
+    function stopHeartbeat() {
+      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    }
+
+    function resetLocalPendingState() {
+      activePendingStoreId = null;
+      activeOrderId = null;
+      myToken = null;
+      if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
+      stopHeartbeat();
+    }
+
+    function clearCustomerFields() {
+      document.getElementById('custName').value = '';
+      document.getElementById('custAddress').value = '';
+      document.getElementById('custNotes').value = '';
+    }
+
+    function askSentQuestion(text, onYes, onNo) {
+      document.getElementById('pendingQuestionText').innerText = text;
+      const yesBtn = document.getElementById('pendingQuestionYes');
+      const noBtn = document.getElementById('pendingQuestionNo');
+      yesBtn.onclick = async () => {
+        yesBtn.disabled = true;
+        try { await onYes(); } finally { yesBtn.disabled = false; }
+      };
+      noBtn.onclick = () => { onNo(); };
+      document.getElementById('pendingQuestionModal').style.display = 'flex';
+    }
+
+    function closeSentQuestion() {
+      document.getElementById('pendingQuestionModal').style.display = 'none';
+      questionShown = false;
+      if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
+    }
+
+    function keepNotSent() {
+      const sid = activePendingStoreId;
+      if (sid) {
+        const p = readPending(sid);
+        if (ownsPending(p) && p.state === 'PENDING' && p.orderId === activeOrderId) removePending(sid);
+      }
+      resetLocalPendingState();
+      closeSentQuestion();
+    }
+
+    async function resolveSent(subtract) {
+      const sid = activePendingStoreId;
+      if (!sid) return;
+      try {
+      await withOrderLock(sid, async () => {
+        let p = readPending(sid);
+        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
+          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
+          resetLocalPendingState();
+          closeSentQuestion();
+          return;
+        }
+
+        // 1. Historial primero, verificado por orderId
+        if (p.state === 'PENDING') {
+          if (!writeHistory(p)) {
+            mtdDiag('TD-008', 'write-history', 'No se pudo guardar o verificar el historial del pedido.');
+            alert("No se pudo registrar tu pedido en el historial. Tu carrito se ha conservado. Intenta de nuevo.");
+            return;
+          }
+          p.state = 'HISTORY_OK';
+          if (!writePending(p)) {
+            mtdDiag('TD-006', 'pending-state-recovery', 'No se pudo guardar el estado recuperado de la confirmación.');
+            alert("No se pudo guardar el estado del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
+            return;
+          }
+        }
+
+        // 2. Cantidades original y esperada: se calculan una sola vez y se persisten antes de restar
+        if (subtract && p.expectedQty === null) {
+          p.originalQty = {};
+          p.expectedQty = {};
+          p.sent.forEach(s => {
+            const cur = cart[s.id] ? cart[s.id].qty : 0;
+            p.originalQty[s.id] = cur;
+            p.expectedQty[s.id] = Math.max(0, cur - s.qty);
+          });
+          if (!writePending(p)) {
+            alert("No se pudo guardar el cálculo del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
+            return;
+          }
+        }
+
+        // 3. Resta línea por línea, idempotente
+        if (subtract) {
+          let decided = null;
+          for (const s of p.sent) {
+            if (p.done[s.id]) continue;
+            const cur = cart[s.id] ? cart[s.id].qty : 0;
+            const exp = p.expectedQty[s.id];
+            const orig = p.originalQty[s.id];
+            if (cur !== exp) {
+              if (cur !== orig && decided === null) {
+                decided = confirm(`Tu carrito cambió después de enviar «${s.name}».\n\nAceptar: restar lo enviado de tu carrito.\nCancelar: conservar tu carrito tal como está.`) ? 'subtract' : 'keep';
+              }
+              if (cur === orig || decided === 'subtract') {
+                if (exp <= 0) delete cart[s.id]; else cart[s.id].qty = exp;
+                saveActiveCart();
+              }
+            }
+            p.done[s.id] = true;
+            if (!writePending(p)) {
+              alert("No se pudo guardar el avance del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
+              return;
+            }
+          }
+        }
+
+        // 4. Cierre: CART_OK y borrado del pendiente
+        p.state = 'CART_OK';
+        if (!writePending(p)) {
+          alert("No se pudo cerrar el pedido. Tu carrito se ha conservado. Intenta de nuevo.");
+          return;
+        }
+        removePending(sid);
+        resetLocalPendingState();
+        closeSentQuestion();
+        if (subtract) {
+          saveActiveCart();
+          updateCartBar();
+          renderProducts();
+          renderCartModalItems();
+        }
+        clearCustomerFields();
+        closeCartModal();
+        closeProductDetailModal();
+        showOrderSuccessBanner();
+      });
+      } catch (_) {
+        mtdDiag('TD-006', 'pending-recovery', 'Falló la recuperación o resolución de la confirmación del pedido.');
+      }
+    }
+
+    function restoreOrphanSnapshot(sid) {
+      const p = readPending(sid);
+      if (p && p.orderId === activeOrderId && ownsPending(p)) {
+        const hasCart = Object.keys(cart).length > 0;
+        const replace = hasCart
+          ? confirm("Tu carrito actual tiene productos. ¿Reemplazarlo por el carrito guardado?\n\nAceptar: reemplazar.\nCancelar: conservar mi carrito actual.")
+          : true;
+        if (replace && Array.isArray(p.cartSnapshot) && p.cartSnapshot.length > 0) {
+          cart = {};
+          p.cartSnapshot.forEach(it => {
+            if (it && it.product) cart[it.product.id] = { product: it.product, qty: it.qty };
+          });
+          cartStoreId = sid;
+          cartOriginName = currentStore ? (currentStore.name || '') : '';
+          cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
+          saveActiveCart();
+        }
+        removePending(sid);
+      }
+      resetLocalPendingState();
+      closeSentQuestion();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+    }
+
+    function recoverOrphan(sid, orderId) {
+      withOrderLock(sid, async () => {
+        const p = readPending(sid);
+        if (!p || p.orderId !== orderId) return;
+        if (Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS) {
+          mtdDiag('TD-007', 'pending-other-tab-orphan', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
+          alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Intenta de nuevo en unos minutos.");
+          return;
+        }
+        const token = newToken();
+        p.owner = { tabId: getTabId(), token: token, gen: ((p.owner && p.owner.gen) || 0) + 1 };
+        p.lastSeen = Date.now();
+        if (!writePending(p)) return;
+        myToken = token;
+        try { sessionStorage.setItem(tokenKey(sid), token); } catch (e) {}
+        activePendingStoreId = sid;
+        activeOrderId = orderId;
+        questionShown = true;
+        startHeartbeat();
+        askSentQuestion(
+          "Encontramos un pedido pendiente de una sesión anterior. ¿Ya lo enviaste por WhatsApp?",
+          () => resolveSent(false),
+          () => restoreOrphanSnapshot(sid)
+        );
+      });
+    }
+
+    function setupPendingRecovery() {
+      if (!currentStore) return;
+      if (!visibilityBound) {
+        document.addEventListener('visibilitychange', onPendingVisibility);
+        window.addEventListener('pageshow', onPendingVisibility);
+        window.addEventListener('focus', onPendingVisibility);
+        visibilityBound = true;
+      }
+      const sid = currentStore.id;
+      const p = readPending(sid);
+      if (!p) return;
+      const tab = getTabId();
+      let savedToken = null;
+      try { savedToken = sessionStorage.getItem(tokenKey(sid)); } catch (e) {}
+      if (p.owner && p.owner.tabId === tab && savedToken && savedToken === p.owner.token) {
+        myToken = savedToken;
+        activePendingStoreId = sid;
+        activeOrderId = p.orderId;
+        startHeartbeat();
+        if (p.state === 'PENDING') {
+          questionShown = true;
+          askSentQuestion("¿Ya enviaste tu pedido por WhatsApp?", () => resolveSent(true), keepNotSent);
+        } else {
+          resolveSent(true);
+        }
+        return;
+      }
+      const recent = Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS;
+      if (recent) {
+        mtdDiag('TD-007', 'pending-other-tab-active', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
+        alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Vuelve a esa pestaña o intenta de nuevo en unos minutos.");
+        return;
+      }
+      setTimeout(() => recoverOrphan(sid, p.orderId), 3000);
+    }
+
+    function schedulePendingQuestion(p) {
+      if (pendingQuestionTimer) clearTimeout(pendingQuestionTimer);
+      const elapsed = Date.now() - (Number(p.openedAt) || 0);
+      const remaining = Math.max(0, 3000 - elapsed);
+      pendingQuestionTimer = setTimeout(() => {
+        pendingQuestionTimer = null;
+        onPendingVisibility();
+      }, remaining);
+    }
+
+    function onPendingVisibility() {
+      if (document.visibilityState === 'hidden') return;
+      const sid = activePendingStoreId;
+      if (!sid) return;
+      const p = readPending(sid);
+      if (!ownsPending(p)) {
+        ownershipLost = sid;
+        resetLocalPendingState();
+        closeSentQuestion();
+        alert("Este pedido se retomó en otra pestaña. No envíes este carrito desde aquí.");
+        return;
+      }
+      if (p.state === 'PENDING' && !questionShown) {
+        const elapsed = Date.now() - (Number(p.openedAt) || 0);
+        if (elapsed < 3000) {
+          schedulePendingQuestion(p);
+          return;
+        }
+        if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
+        questionShown = true;
+        askSentQuestion("¿Ya enviaste tu pedido por WhatsApp?", () => resolveSent(true), keepNotSent);
+      }
+    }
+
+    async function requestCartValidation() {
+      const entries = Object.values(cart);
+      lastPayloadIds = entries.map(it => it.product.id);
+      const payload = entries.map(it => ({
+        id: it.product.id,
+        qty: it.qty,
+        price: Math.round((parseFloat(it.product.price) || 0) * 100) / 100
+      }));
+      try {
+        const { data, error } = await supabaseClient.rpc('validate_cart_items', {
+          p_store_id: currentStore.id,
+          p_items: payload
+        });
+        if (error) throw error;
+        return data;
+      } catch (err) {
+        mtdDiag('TD-004', 'cart-validation', 'Falló la validación técnica del carrito con Supabase.');
+        alert("No se pudo verificar la disponibilidad por un problema de conexión. Tu carrito se ha conservado intacto; intenta nuevamente.");
+        return null;
+      }
+    }
+
+    function reasonText(code) {
+      const map = {
+        SOLD_OUT: 'Agotado',
+        NOT_AVAILABLE: 'No disponible',
+        DUPLICATE_ITEM: 'Producto repetido en el carrito',
+        PRICE_CHANGED: 'Precio cambiado',
+        INVALID_QTY: 'Cantidad no válida',
+        INVALID_PRICE: 'Precio no válido',
+        MISSING_PRICE: 'Precio ausente',
+        MISSING_QTY: 'Cantidad ausente',
+        INVALID_ID: 'Identificador no válido',
+        INVALID_ITEM: 'Línea no válida'
+      };
+      return map[code] || 'Producto con un error';
+    }
+
+    function openReviewModal(res) {
+      const container = document.getElementById('reviewCartList');
+      const rows = [];
+      (res.items || []).forEach((line, idx) => {
+        if (line.item_valid === true) return;
+        const key = lastPayloadIds[idx];
+        const cartItem = key ? cart[key] : null;
+        if (!cartItem) return;
+        const name = escapeHTML(line.db_name || cartItem.product.name);
+        if (line.problem === 'PRICE_CHANGED') {
+          const oldP = parseFloat(line.requested_price || 0).toFixed(2);
+          const newP = parseFloat(line.db_price || 0).toFixed(2);
+          rows.push(`
+            <div class="cart-item" style="flex-direction:column; align-items:stretch;">
+              <div class="cart-item-name">${name}</div>
+              <div class="cart-item-sub">Precio anterior: S/ ${oldP} &bull; Nuevo precio oficial: S/ ${newP}</div>
+              <label style="display:flex; gap:8px; align-items:center; font-size:0.9rem; font-weight:700;">
+                <input type="checkbox" class="rv-check" data-kind="price" data-key="${escapeHTML(key)}" data-price="${newP}" style="width:auto; margin:0;">
+                Acepto el nuevo precio
+              </label>
+            </div>
+          `);
+        } else {
+          rows.push(`
+            <div class="cart-item" style="flex-direction:column; align-items:stretch;">
+              <div class="cart-item-name">${name}</div>
+              <div class="cart-item-sub"><b>${escapeHTML(reasonText(line.problem || line.secondary_problem))}</b></div>
+              <label style="display:flex; gap:8px; align-items:center; font-size:0.9rem; font-weight:700;">
+                <input type="checkbox" class="rv-check" data-kind="remove" data-key="${escapeHTML(key)}" style="width:auto; margin:0;">
+                Retirar este producto del carrito
+              </label>
+            </div>
+          `);
+        }
+      });
+      container.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">No hay productos que revisar.</div>';
+      document.getElementById('reviewCartModal').style.display = 'flex';
+    }
+
+    function closeReviewModal() {
+      document.getElementById('reviewCartModal').style.display = 'none';
+    }
+
+    function applyReviewChanges() {
+      // Solo cambia lo que el cliente marcó expresamente
+      document.querySelectorAll('#reviewCartList .rv-check').forEach(chk => {
+        if (!chk.checked) return;
+        const key = chk.getAttribute('data-key');
+        const kind = chk.getAttribute('data-kind');
+        if (!cart[key]) return;
+        if (kind === 'price') {
+          cart[key].product.price = parseFloat(chk.getAttribute('data-price')) || 0;
+        } else if (kind === 'remove') {
+          delete cart[key];
+        }
+      });
+      if (Object.keys(cart).length === 0) cartStoreId = null;
+      saveActiveCart();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+      closeReviewModal();
+      // Revalidar siempre antes de abrir WhatsApp
+      sendWhatsAppOrder();
+    }
+
+    // v2.3.5: una sola ejecución por pestaña y bloqueo coordinado por tienda.
+    async function sendWhatsAppOrder() {
+      if (sendInFlight) { mtdDiag('TD-007', 'send-duplicate-blocked', 'Se bloqueó un segundo intento mientras otro envío estaba en curso.'); return; }
+      if (!currentStore) return;
+      sendInFlight = true;
+      const sendButton = document.getElementById('btnSendWhatsApp');
+      if (sendButton) sendButton.disabled = true;
+      try {
+        await withSendLock(currentStore.id, sendWhatsAppOrderInternal);
+      } catch (err) {
+        mtdDiag('TD-005', 'whatsapp-send', 'Falló la preparación o el inicio del envío a WhatsApp.');
+        alert((err && err.message) ? err.message : 'No se pudo iniciar el envío. Tu carrito se conserva intacto.');
+      } finally {
+        sendInFlight = false;
+        if (sendButton) sendButton.disabled = false;
+      }
+    }
+
+    async function sendWhatsAppOrderInternal() {
+      if (currentStore && currentStore.is_active === false) {
+        alert("Esta tienda se encuentra temporalmente pausada y no está recibiendo pedidos.");
+        return;
+      }
+      if (cartBlockedByOther()) {
+        showPendingCartPanel();
+        return;
+      }
+      if (!currentStore) return;
+      if (ownershipLost === currentStore.id) {
+        alert("Este carrito ya no puede enviarse desde esta pestaña. Recarga la tienda para continuar.");
+        return;
+      }
+      if (Object.keys(cart).length === 0) {
+        alert("Agrega al menos un producto con \"+ Agregar\" antes de enviar.");
+        return;
+      }
+      const sid = currentStore.id;
+      if (readPending(sid)) {
+        mtdDiag('TD-007', 'pending-confirmation-block', 'Se bloqueó un nuevo envío porque hay un pedido pendiente de confirmar.');
+        alert("Tienes un pedido pendiente de confirmar para esta tienda. Se resolverá al volver a esta pestaña.");
+        return;
+      }
+
+      const custName = document.getElementById('custName').value.trim();
+      const custAddress = document.getElementById('custAddress').value.trim();
+      const custNotes = document.getElementById('custNotes').value.trim();
+
+      if (!custName) {
+        alert("Por favor escribe tu nombre.");
+        document.getElementById('custName').focus();
+        return;
+      }
+
+      let phone = currentStore.whatsapp ? currentStore.whatsapp.replace(/[^0-9]/g, '') : '';
+      if (!phone) {
+        alert("Esta tienda aún no ha configurado su número de WhatsApp de pedidos.");
+        return;
+      }
+      if (phone.length === 9) phone = '51' + phone;
+
+      const res = await requestCartValidation();
+      if (!res) return;
+
+      // Segunda comprobación: otra pestaña pudo crear un pendiente mientras Supabase validaba.
+      if (readPending(sid)) {
+        mtdDiag('TD-007', 'pending-send-block', 'Se bloqueó un envío duplicado porque ya existe un envío pendiente.');
+        alert("Este pedido ya tiene un envío pendiente en esta tienda. Regresa a la pestaña que inició el envío para confirmar su estado.");
+        return;
+      }
+
+      if (res.status === 'STORE_NOT_AVAILABLE') {
+        showUnavailable();
+        alert("TIENDA NO DISPONIBLE");
+        return;
+      }
+      if (res.status === 'CART_NEEDS_REVIEW') {
+        openReviewModal(res);
+        return;
+      }
+      if (res.status !== 'SUCCESS' || res.valid !== true) {
+        const detalle = res.status === 'VALIDATION_ERROR'
+          ? "No se pudo validar el carrito. Código de incidencia: " + (res.incident_id || '-') + "."
+          : "No se pudo validar el carrito (" + res.status + ").";
+        alert(detalle + " Tu carrito se ha conservado intacto.");
+        return;
+      }
+
+      // Importes con precios vigentes de Supabase (db_price)
+      let total = 0;
+      let productosTexto = "";
+      const sentLines = [];
+      (res.items || []).forEach((line, idx) => {
+        const id = lastPayloadIds[idx];
+        const qty = parseInt(line.requested_qty, 10) || 0;
+        const unit = parseFloat(line.db_price) || 0;
+        const sub = unit * qty;
+        total += sub;
+        productosTexto += `• ${qty}x ${line.db_name} (S/ ${unit.toFixed(2)}) = S/ ${sub.toFixed(2)}\n`;
+        sentLines.push({ id: id, qty: qty, price: unit, name: line.db_name });
+      });
+
+      let mensaje = `¡Hola! Quiero hacer el siguiente pedido en *${currentStore.name || 'Mi Tienda'}*:\n\n`;
+      mensaje += `📦 *PRODUCTOS:*\n${productosTexto}\n`;
+      mensaje += `💰 *TOTAL A PAGAR: S/ ${total.toFixed(2)}*\n\n`;
+      mensaje += `👤 *Cliente:* ${custName}\n`;
+      if (custAddress) mensaje += `📍 *Dirección/Entrega:* ${custAddress}\n`;
+      if (custNotes) mensaje += `📝 *Nota:* ${custNotes}\n`;
+
+      // Pendiente creado ANTES de abrir WhatsApp. El carrito no se modifica.
+      const orderId = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const token = newToken();
+      const p = {
+        orderId: orderId,
+        storeId: sid,
+        storeName: currentStore.name || 'Mi Tienda',
+        state: 'PENDING',
+        openedAt: Date.now(),
+        lastSeen: Date.now(),
+        total: total.toFixed(2),
+        owner: { tabId: getTabId(), token: token, gen: 1 },
+        sent: sentLines,
+        cartSnapshot: snapshotCart(),
+        originalQty: null,
+        expectedQty: null,
+        done: {}
+      };
+      if (!writePending(p)) {
+        alert("No se pudo guardar tu pedido en este navegador. WhatsApp no se ha abierto y tu carrito sigue intacto.");
+        return;
+      }
+      myToken = token;
+      try { sessionStorage.setItem(tokenKey(sid), token); } catch (e) {}
+      activePendingStoreId = sid;
+      activeOrderId = orderId;
+      questionShown = false;
+      startHeartbeat();
+
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`, '_blank');
+      closeCartModal();
+      closeProductDetailModal();
+    }
+
+    function renderCategoryFilter() {
+      const row = document.getElementById('categoriesBubbleRow');
+      let html = `
+        <div class="category-bubble-item ${currentFilter === 'all' ? 'active' : ''}" onclick="filterByCategory('all', this)">
+          <div class="bubble-box">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect></svg>
+          </div>
+          <span class="bubble-title">Todas</span>
+        </div>
+      `;
+
+      categoriesList.forEach(cat => {
+        const isActive = currentFilter === cat.id;
+        const safeName = escapeHTML(cat.name);
+        const sampleProd = productsList.find(p => p.category_id === cat.id && p.image_url);
+        const bubbleImg = sampleProd 
+          ? `<img src="${escapeHTML(sampleProd.image_url)}" alt="${safeName}">` 
+          : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>`;
+
+        html += `
+          <div class="category-bubble-item ${isActive ? 'active' : ''}" onclick="filterByCategory('${cat.id}', this)">
+            <div class="bubble-box">
+              ${bubbleImg}
+            </div>
+            <span class="bubble-title">${safeName}</span>
+          </div>
+        `;
+      });
+
+      row.innerHTML = html;
+    }
+
+    function filterByCategory(catId, element) {
+      currentFilter = catId;
+      document.querySelectorAll('.category-bubble-item').forEach(el => el.classList.remove('active'));
+      if (element) element.classList.add('active');
+      renderProducts();
+    }
+
+    // v2.4.4: normalización para buscar sin mayúsculas ni tildes
+    function normalizeSearchText(text) {
+      return String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function onProductSearchInput(value) {
+      productSearchTerm = value || '';
+      const clearBtn = document.getElementById('productSearchClear');
+      if (clearBtn) clearBtn.style.display = productSearchTerm ? 'flex' : 'none';
+      clearTimeout(productSearchTimer);
+      productSearchTimer = setTimeout(() => renderProducts(), 150);
+    }
+
+    function clearProductSearch() {
+      const input = document.getElementById('productSearch');
+      if (input) { input.value = ''; input.focus(); }
+      productSearchTerm = '';
+      const clearBtn = document.getElementById('productSearchClear');
+      if (clearBtn) clearBtn.style.display = 'none';
+      clearTimeout(productSearchTimer);
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const grid = document.getElementById('productsGrid');
+
+      // Filtrado por categorías activas:
+      // Si el producto no tiene categoría (category_id null), siempre se muestra en 'Todas'.
+      // Si tiene categoría, solo se muestra si su categoría está en categoriesList (activas).
+      const activeCatIds = new Set(categoriesList.map(c => c.id));
+      const visibleProducts = productsList.filter(p => {
+        if (!p.category_id) return true; // Sin categoría se muestra
+        return activeCatIds.has(p.category_id);
+      });
+
+      let filtered = visibleProducts;
+      if (currentFilter !== 'all') {
+        filtered = visibleProducts.filter(p => p.category_id === currentFilter);
+      }
+
+      // v2.4.4: búsqueda por nombre, descripción y nombre de categoría (dentro de la categoría activa)
+      const searchWords = normalizeSearchText(productSearchTerm).split(/\s+/).filter(Boolean);
+      if (searchWords.length > 0) {
+        filtered = filtered.filter(p => {
+          const haystack = normalizeSearchText(
+            [p.name, p.description, categoriesMap[p.category_id]].filter(Boolean).join(' ')
+          );
+          return searchWords.every(w => haystack.includes(w));
+        });
+      }
+
+      if (filtered.length === 0) {
+        if (searchWords.length > 0) {
+          grid.innerHTML = '<div class="empty-state">No encontramos productos para «' + escapeHTML(productSearchTerm.trim()) + '». Prueba con otra palabra.</div>';
+        } else {
+          grid.innerHTML = '<div class="empty-state">No hay productos disponibles en esta sección.</div>';
+        }
+        return;
+      }
+
+      const isStoreActive = currentStore && currentStore.is_active !== false;
+
+      grid.innerHTML = filtered.map(prod => {
+        const catName = categoriesMap[prod.category_id] || '';
+        const safeCat = escapeHTML(catName);
+        const safeName = escapeHTML(prod.name);
+        const safeImg = prod.image_url ? escapeHTML(prod.image_url) : '';
+        const priceNum = parseFloat(prod.price || 0).toFixed(2);
+        const inCartQty = cart[prod.id] ? cart[prod.id].qty : 0;
+        const isAvail = prod.is_available !== false;
+
+        const imgTag = safeImg 
+          ? `<img src="${safeImg}" class="prod-img" alt="${safeName}">`
+          : `<div class="prod-img-empty"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></div>`;
+
+        let actionBtn = "";
+        if (!isStoreActive) {
+          actionBtn = `
+            <button class="btn-add-playazo" disabled style="background:#cbd5e1; color:#64748b; cursor:not-allowed;">
+              <span>Pausada</span>
+            </button>
+          `;
+        } else if (!isAvail) {
+          actionBtn = `
+            <button class="btn-add-playazo" disabled style="background:#94a3b8; color:#ffffff; cursor:not-allowed;">
+              <span>AGOTADO</span>
+            </button>
+          `;
+        } else if (inCartQty > 0) {
+          actionBtn = `
+            <div class="qty-card-control">
+              <button class="btn-card-qty" onclick="changeQty('${prod.id}', -1)">-</button>
+              <span class="card-qty-num">${inCartQty}</span>
+              <button class="btn-card-qty" onclick="changeQty('${prod.id}', 1)">+</button>
+            </div>
+          `;
+        } else {
+          actionBtn = `
+            <button class="btn-add-playazo" onclick="changeQty('${prod.id}', 1)">
+              <span>+ Agregar</span>
+            </button>
+          `;
+        }
+
+        const agotadoBadge = !isAvail 
+          ? `<span class="badge-agotado">AGOTADO</span>`
+          : '';
+
+        return `
+          <div class="prod-card">
+            <div class="prod-img-box" onclick="openProductDetailModal('${prod.id}')" style="cursor:pointer;" title="Toca para ver detalles">
+              ${imgTag}
+            </div>
+            <div class="prod-info">
+              <div class="prod-meta" onclick="openProductDetailModal('${prod.id}')" style="cursor:pointer;" title="Toca para ver detalles">
+                ${safeCat ? `<span class="prod-cat-label">${safeCat}</span>` : ''}
+                ${agotadoBadge}
+                <h3 class="prod-name">${safeName}</h3>
+              </div>
+              <div>
+                <div class="prod-price" onclick="openProductDetailModal('${prod.id}')" style="cursor:pointer;">S/ ${priceNum}</div>
+                ${actionBtn}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function changeQty(prodId, delta) {
+      if (currentStore && currentStore.is_active === false) {
+        alert("Esta tienda se encuentra temporalmente pausada y no está recibiendo pedidos.");
+        return;
+      }
+      if (delta > 0 && cartBlockedByOther()) {
+        showPendingCartPanel();
+        return;
+      }
+      const prod = productsList.find(p => p.id === prodId);
+      if (!prod) return;
+
+      // Bloquear incremento si el producto está agotado
+      if (delta > 0 && prod.is_available === false) {
+        alert("Este producto se encuentra actualmente agotado.");
+        return;
+      }
+
+      // Bloquear si la categoría está oculta
+      const activeCatIds = new Set(categoriesList.map(c => c.id));
+      if (delta > 0 && prod.category_id && !activeCatIds.has(prod.category_id)) {
+        alert("Este producto no está disponible.");
+        return;
+      }
+
+      // Evitar que changeQty() permita mezclar productos de diferentes comerciantes
+      if (delta > 0 && cartStoreId && currentStore && cartStoreId !== currentStore.id && Object.keys(cart).length > 0) {
+        const originStore = allStores.find(s => s.id === cartStoreId);
+        const originName = originStore ? (originStore.name || 'otra tienda') : 'otra tienda';
+        const destName = currentStore.name || 'esta tienda';
+        const confirmar = confirm(`Tienes productos en tu carrito de la tienda "${originName}".\n\n¿Deseas vaciar tu carrito para comenzar a comprar en "${destName}"?\n\n• Si cancelas, conservarás tus productos de "${originName}".\n• Si aceptas, se vaciará el carrito y podrás comprar en "${destName}".`);
+        if (!confirmar) {
+          return; // Cancelar: no agrega el producto ajeno
+        }
+        // Aceptar: vaciar carrito previo y vincular a la nueva tienda
+        cart = {};
+        cartStoreId = null;
+        saveActiveCart();
+        updateCartBar();
+        renderCartModalItems();
+      }
+
+      if (!cart[prodId]) {
+        cart[prodId] = { product: prod, qty: 0 };
+      }
+
+      cart[prodId].qty += delta;
+
+      if (cart[prodId].qty <= 0) {
+        delete cart[prodId];
+      }
+
+      // Actualizar cartStoreId si el carrito tiene productos o queda vacío
+      if (Object.keys(cart).length > 0) {
+        cartStoreId = currentStore ? currentStore.id : cartStoreId;
+      } else {
+        cartStoreId = null;
+      }
+
+      saveActiveCart();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+      if (typeof renderDetailActionBox === 'function') {
+        renderDetailActionBox();
+      }
+    }
+
+    function updateCartBar() {
+      if (cartBlockedByOther()) {
+        document.getElementById('cartCountLabel').innerText = "Carrito de otra tienda";
+        document.getElementById('cartTotalLabel').innerText = "Toca para ver";
+        return;
+      }
+      let totalQty = 0;
+      let totalPrice = 0;
+
+      Object.values(cart).forEach(item => {
+        totalQty += item.qty;
+        totalPrice += (parseFloat(item.product.price) || 0) * item.qty;
+      });
+
+      document.getElementById('cartCountLabel').innerText = `${totalQty} unidad${totalQty === 1 ? '' : 'es'}`;
+      document.getElementById('cartTotalLabel').innerText = `S/ ${totalPrice.toFixed(2)}`;
+      if (activePendingStoreId) {
+        const pp = readPending(activePendingStoreId);
+        if (ownsPending(pp) && pp.state === 'PENDING') {
+          pp.cartSnapshot = snapshotCart();
+          writePending(pp);
+        }
+      }
+    }
+
+    function openCartModal() {
+      if (cartBlockedByOther()) {
+        showPendingCartPanel();
+        return;
+      }
+      renderCartModalItems();
+      document.getElementById('cartModal').style.display = 'flex';
+    }
+
+    function closeCartModal(e) {
+      if (!e || e.target.id === 'cartModal') {
+        document.getElementById('cartModal').style.display = 'none';
+      }
+    }
+
+    function renderCartModalItems() {
+      const container = document.getElementById('cartItemsList');
+      const items = Object.values(cart);
+
+      const estimatedBox = document.getElementById('cartEstimatedTotal');
+      const estimatedValue = document.getElementById('cartEstimatedTotalValue');
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding:20px;">Tu carrito está vacío. Agrega productos con "+ Agregar".</div>';
+        if (estimatedBox) estimatedBox.style.display = 'none';
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        const subtotal = ((parseFloat(item.product.price) || 0) * item.qty).toFixed(2);
+        const safeItemName = escapeHTML(item.product.name);
+        return `
+          <div class="cart-item">
+            <div>
+              <div class="cart-item-name">${safeItemName}</div>
+              <div class="cart-item-sub">S/ ${parseFloat(item.product.price).toFixed(2)} c/u &bull; Subtotal: S/ ${subtotal}</div>
+            </div>
+            <div class="qty-card-control" style="width:auto; gap:6px;">
+              <button class="btn-card-qty" onclick="changeQty('${item.product.id}', -1)">-</button>
+              <span class="card-qty-num" style="min-width:18px; text-align:center;">${item.qty}</span>
+              <button class="btn-card-qty" onclick="changeQty('${item.product.id}', 1)">+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (estimatedBox && estimatedValue) {
+        let estimatedTotal = 0;
+        items.forEach(item => {
+          estimatedTotal += (parseFloat(item.product.price) || 0) * item.qty;
+        });
+        estimatedValue.innerText = `S/ ${estimatedTotal.toFixed(2)}`;
+        estimatedBox.style.display = 'flex';
+      }
+    }
+
+    function showOrderSuccessBanner() {
+      const banner = document.getElementById('orderSuccessBanner');
+      if (banner) {
+        banner.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => { banner.style.display = 'none'; }, 8000);
+      }
+    }
+
+    function openOrdersModal() {
+      const body = document.getElementById('ordersModalBody');
+      const footer = document.getElementById('ordersModalFooter');
+      try {
+        const history = JSON.parse(localStorage.getItem(historyKey()) || '[]');
+        if (history.length === 0) {
+          body.innerHTML = '<div class="empty-state">No tienes pedidos registrados en este navegador todavía.</div>';
+          if (footer) footer.style.display = 'none';
+        } else {
+          body.innerHTML = history.map(h => `
+            <div class="history-card">
+              <div class="history-date">📅 ${escapeHTML(h.date)} &bull; <b>${escapeHTML(h.store)}</b></div>
+              <div style="font-size:0.88rem; color:#1e293b; margin:4px 0;">
+                ${h.items.map(it => `<div>&bull; ${escapeHTML(it)}</div>`).join('')}
+              </div>
+              <div class="history-total">Total: S/ ${escapeHTML(h.total)}</div>
+            </div>
+          `).join('');
+          if (footer) footer.style.display = 'block';
+        }
+      } catch (e) {
+        body.innerHTML = '<div class="empty-state">Error al leer pedidos.</div>';
+        if (footer) footer.style.display = 'none';
+      }
+      document.getElementById('ordersModal').style.display = 'flex';
+    }
+
+    function clearOrdersHistory() {
+      const confirmacion = confirm("¿Estás seguro de que deseas eliminar todo el historial de pedidos?\n\nEsta acción no se puede deshacer.");
+      if (!confirmacion) {
+        return; // Conserva el historial completo
+      }
+      try {
+        localStorage.removeItem(historyKey());
+      } catch (e) {
+        console.error("Error al eliminar historial:", e);
+      }
+      // Actualiza la pantalla para mostrar el historial vacío
+      openOrdersModal();
+    }
+
+    function closeOrdersModal(e) {
+      if (!e || e.target.id === 'ordersModal') {
+        document.getElementById('ordersModal').style.display = 'none';
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('storeTitle').innerText = "Aviso del Sistema";
+      document.getElementById('productsGrid').innerHTML = `<div class="error-box"><b>Diagnóstico:</b><br>${msg}</div>`;
+    }
+
+    // VARIABLES Y FUNCIONES DEL MODAL DE DETALLE DE PRODUCTO
+    let currentDetailProdId = null;
+
+    function openProductDetailModal(prodId) {
+      const prod = productsList.find(p => p.id === prodId);
+      if (!prod) return;
+      currentDetailProdId = prodId;
+
+      const catName = categoriesMap[prod.category_id] || 'Producto';
+      const detailCatLabel = document.getElementById('detailCatLabel');
+      if (detailCatLabel) detailCatLabel.innerText = catName;
+
+      const detailName = document.getElementById('detailName');
+      if (detailName) detailName.innerText = prod.name;
+
+      const detailPrice = document.getElementById('detailPrice');
+      if (detailPrice) detailPrice.innerText = 'S/ ' + parseFloat(prod.price || 0).toFixed(2);
+      
+      const descEl = document.getElementById('detailDesc');
+      if (descEl) {
+        if (prod.description && prod.description.trim()) {
+          descEl.innerText = prod.description.trim();
+          descEl.style.fontStyle = 'normal';
+          descEl.style.color = '#1e293b';
+        } else {
+          descEl.innerText = 'Este producto no cuenta con descripción adicional.';
+          descEl.style.fontStyle = 'italic';
+          descEl.style.color = '#94a3b8';
+        }
+      }
+
+      const imgEl = document.getElementById('detailImg');
+      const noImgEl = document.getElementById('detailNoImg');
+      if (prod.image_url) {
+        if (imgEl) {
+          imgEl.src = prod.image_url;
+          imgEl.alt = prod.name;
+          imgEl.style.display = 'block';
+        }
+        if (noImgEl) noImgEl.style.display = 'none';
+      } else {
+        if (imgEl) {
+          imgEl.src = '';
+          imgEl.style.display = 'none';
+        }
+        if (noImgEl) noImgEl.style.display = 'flex';
+      }
+
+      renderDetailActionBox();
+      const modal = document.getElementById('productDetailModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function closeProductDetailModal(e) {
+      if (!e || e.target.id === 'productDetailModal') {
+        const modal = document.getElementById('productDetailModal');
+        if (modal) modal.style.display = 'none';
+        currentDetailProdId = null;
+      }
+    }
+
+    function renderDetailActionBox() {
+      if (!currentDetailProdId) return;
+      const box = document.getElementById('detailActionBox');
+      if (!box) return;
+
+      const prod = productsList.find(p => p.id === currentDetailProdId);
+      const isAvail = prod ? prod.is_available !== false : true;
+      const inCartQty = cart[currentDetailProdId] ? cart[currentDetailProdId].qty : 0;
+      const isStoreActive = currentStore && currentStore.is_active !== false;
+
+      if (!isStoreActive) {
+        box.innerHTML = `<button class="btn-add-playazo" disabled style="background:#cbd5e1; color:#64748b; cursor:not-allowed; padding:13px; font-size:1rem; width:100%;">Tienda Pausada</button>`;
+      } else if (!isAvail) {
+        box.innerHTML = `<button class="btn-add-playazo" disabled style="background:#94a3b8; color:#ffffff; cursor:not-allowed; padding:13px; font-size:1rem; width:100%;">Producto Agotado</button>`;
+      } else if (inCartQty > 0) {
+        box.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:12px; padding:6px 12px;">
+              <span style="font-size:0.9rem; font-weight:700; color:#334155;">En tu carrito:</span>
+              <div class="qty-card-control" style="width:auto; gap:8px;">
+                <button class="btn-card-qty" style="width:36px; height:36px;" onclick="changeQtyFromDetail(-1)">-</button>
+                <span class="card-qty-num" style="min-width:24px; text-align:center; font-size:1.15rem;">${inCartQty}</span>
+                <button class="btn-card-qty" style="width:36px; height:36px;" onclick="changeQtyFromDetail(1)">+</button>
+              </div>
+            </div>
+            <button class="btn-ver-carrito-orange" style="width:100%; justify-content:center; padding:13px; font-size:1rem;" onclick="closeProductDetailModal(); openCartModal();">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+              <span>Ver mi Carrito</span>
+            </button>
+          </div>
+        `;
+      } else {
+        box.innerHTML = `
+          <button class="btn-add-playazo" style="padding:13px; font-size:1.02rem; width:100%;" onclick="changeQtyFromDetail(1)">
+            <span>+ Agregar al Carrito</span>
+          </button>
+        `;
+      }
+    }
+
+    function changeQtyFromDetail(delta) {
+      if (!currentDetailProdId) return;
+      changeQty(currentDetailProdId, delta);
+      renderDetailActionBox();
+    }
+
+  </script>
+</body>
+</html>
