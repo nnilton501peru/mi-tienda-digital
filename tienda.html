@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.3 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.4 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.3</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.4</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.3' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.3' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.4' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.4' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -841,6 +841,51 @@
       background: #fecaca;
       transform: scale(0.98);
     }
+    /* v2.4.4: buscador de productos (sin sticky) */
+    .product-search-wrap {
+      position: relative;
+      padding: 4px 12px 12px;
+      background: #f8fafc;
+    }
+    .product-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 44px 11px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 15px;
+      background: #ffffff;
+      color: #0f172a;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .product-search:focus {
+      border-color: var(--header-bg);
+      box-shadow: 0 0 0 3px rgba(0,143,158,0.18);
+    }
+    .product-search::-webkit-search-cancel-button,
+    .product-search::-webkit-search-decoration {
+      -webkit-appearance: none;
+      display: none;
+    }
+    .product-search-clear {
+      position: absolute;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #334155;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -850,7 +895,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.3</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.4</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -882,6 +927,14 @@
           <span class="bubble-title">Todas</span>
         </div>
       </div>
+    </div>
+
+    <!-- BUSCADOR DE PRODUCTOS (v2.4.4) -->
+    <div class="product-search-wrap">
+      <input type="search" id="productSearch" class="product-search" placeholder="Buscar productos..." autocomplete="off" oninput="onProductSearchInput(this.value)">
+      <button type="button" id="productSearchClear" class="product-search-clear" onclick="clearProductSearch()" aria-label="Borrar búsqueda">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
 
     <!-- GRID DE PRODUCTOS EN 2 COLUMNAS (ESTILO PLAYAZO) -->
@@ -1064,6 +1117,8 @@
     let categoriesMap = {};
     let productsList = [];
     let currentFilter = 'all';
+    let productSearchTerm = '';
+    let productSearchTimer = null;
 
     // Carrito en memoria vinculado a una única tienda
     let cart = {};
@@ -1175,7 +1230,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.3' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.4' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1206,7 +1261,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.3' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.4' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1214,6 +1269,13 @@
       categoriesList = catalogData.categories || [];
       categoriesMap = {};
       categoriesList.forEach(c => { categoriesMap[c.id] = c.name; });
+      // v2.4.4: al cargar una tienda, la búsqueda anterior se limpia
+      productSearchTerm = '';
+      clearTimeout(productSearchTimer);
+      const psInput = document.getElementById('productSearch');
+      if (psInput) psInput.value = '';
+      const psClear = document.getElementById('productSearchClear');
+      if (psClear) psClear.style.display = 'none';
 
       renderCategoryFilter();
       renderProducts();
@@ -1955,6 +2017,33 @@
       renderProducts();
     }
 
+    // v2.4.4: normalización para buscar sin mayúsculas ni tildes
+    function normalizeSearchText(text) {
+      return String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function onProductSearchInput(value) {
+      productSearchTerm = value || '';
+      const clearBtn = document.getElementById('productSearchClear');
+      if (clearBtn) clearBtn.style.display = productSearchTerm ? 'flex' : 'none';
+      clearTimeout(productSearchTimer);
+      productSearchTimer = setTimeout(() => renderProducts(), 150);
+    }
+
+    function clearProductSearch() {
+      const input = document.getElementById('productSearch');
+      if (input) { input.value = ''; input.focus(); }
+      productSearchTerm = '';
+      const clearBtn = document.getElementById('productSearchClear');
+      if (clearBtn) clearBtn.style.display = 'none';
+      clearTimeout(productSearchTimer);
+      renderProducts();
+    }
+
     function renderProducts() {
       const grid = document.getElementById('productsGrid');
 
@@ -1972,8 +2061,23 @@
         filtered = visibleProducts.filter(p => p.category_id === currentFilter);
       }
 
+      // v2.4.4: búsqueda por nombre, descripción y nombre de categoría (dentro de la categoría activa)
+      const searchWords = normalizeSearchText(productSearchTerm).split(/\s+/).filter(Boolean);
+      if (searchWords.length > 0) {
+        filtered = filtered.filter(p => {
+          const haystack = normalizeSearchText(
+            [p.name, p.description, categoriesMap[p.category_id]].filter(Boolean).join(' ')
+          );
+          return searchWords.every(w => haystack.includes(w));
+        });
+      }
+
       if (filtered.length === 0) {
-        grid.innerHTML = '<div class="empty-state">No hay productos disponibles en esta sección.</div>';
+        if (searchWords.length > 0) {
+          grid.innerHTML = '<div class="empty-state">No encontramos productos para «' + escapeHTML(productSearchTerm.trim()) + '». Prueba con otra palabra.</div>';
+        } else {
+          grid.innerHTML = '<div class="empty-state">No hay productos disponibles en esta sección.</div>';
+        }
         return;
       }
 
