@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.1 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.2 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.1</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.2</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.1' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.1' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.2' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.2' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -849,7 +849,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.1</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.2</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -912,6 +912,11 @@
       <div class="modal-body">
         <div class="cart-items-list" id="cartItemsList">
           <!-- Items del carrito -->
+        </div>
+
+        <div id="cartEstimatedTotal" style="display:none; justify-content:space-between; align-items:center; margin:12px 0; padding:12px 14px; border-radius:12px; background:#f1f5f9; border:1px solid #e2e8f0;">
+          <span style="font-weight:700; color:#334155; font-size:.9rem;">TOTAL ESTIMADO</span>
+          <strong id="cartEstimatedTotalValue" style="font-size:1.15rem; color:#0f172a;">S/ 0.00</strong>
         </div>
 
         <div class="checkout-form">
@@ -1169,7 +1174,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.1' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.2' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1200,7 +1205,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.1' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.2' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -2152,8 +2157,12 @@
       const container = document.getElementById('cartItemsList');
       const items = Object.values(cart);
 
+      const estimatedBox = document.getElementById('cartEstimatedTotal');
+      const estimatedValue = document.getElementById('cartEstimatedTotalValue');
+
       if (items.length === 0) {
         container.innerHTML = '<div class="empty-state" style="padding:20px;">Tu carrito está vacío. Agrega productos con "+ Agregar".</div>';
+        if (estimatedBox) estimatedBox.style.display = 'none';
         return;
       }
 
@@ -2174,6 +2183,15 @@
           </div>
         `;
       }).join('');
+
+      if (estimatedBox && estimatedValue) {
+        let estimatedTotal = 0;
+        items.forEach(item => {
+          estimatedTotal += (parseFloat(item.product.price) || 0) * item.qty;
+        });
+        estimatedValue.innerText = `S/ ${estimatedTotal.toFixed(2)}`;
+        estimatedBox.style.display = 'flex';
+      }
     }
 
     function showOrderSuccessBanner() {
