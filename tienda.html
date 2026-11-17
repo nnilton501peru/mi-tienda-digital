@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.2 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.3 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.2</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.3</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.2' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.2' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.3' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.3' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -357,7 +357,8 @@
     .bubble-box {
       width: 74px;
       height: 74px;
-      border-radius: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
       background: #ffffff;
       border: 2px solid #e2e8f0;
       display: flex;
@@ -370,7 +371,7 @@
 
     .category-bubble-item.active .bubble-box {
       border: 2.5px solid var(--header-bg);
-      box-shadow: 0 0 0 3px rgba(0,143,158,0.2);
+      box-shadow: 0 0 0 4px rgba(0,143,158,0.28);
     }
 
     .bubble-box svg {
@@ -384,10 +385,10 @@
     }
 
     .bubble-title {
-      font-size: 0.82rem;
+      font-size: 0.88rem;
       font-weight: 700;
       color: #1e293b;
-      line-height: 1.15;
+      line-height: 1.2;
       overflow: hidden;
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -849,7 +850,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:rgba(100,116,139,.12);color:#64748b;font-size:.68rem;vertical-align:middle;">v2.4.2</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.3</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1174,7 +1175,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.2' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.3' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1205,7 +1206,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.2' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.3' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1932,7 +1933,7 @@
         const sampleProd = productsList.find(p => p.category_id === cat.id && p.image_url);
         const bubbleImg = sampleProd 
           ? `<img src="${escapeHTML(sampleProd.image_url)}" alt="${safeName}">` 
-          : `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16m-7 6h7"/></svg>`;
+          : `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>`;
 
         html += `
           <div class="category-bubble-item ${isActive ? 'active' : ''}" onclick="filterByCategory('${cat.id}', this)">
