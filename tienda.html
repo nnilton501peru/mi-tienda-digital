@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.6 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.7 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.6</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.7</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.6' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.6' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.7' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.7' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -901,7 +901,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.6</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.7</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1091,6 +1091,22 @@
     </div>
   </div>
 
+  <!-- v2.4.7: carrito nuevo y pedido anterior (el cliente elige) -->
+  <div class="modal-overlay" id="orphanChoiceModal">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">Tienes productos en tu carrito</h2>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.95rem; color:#1e293b; line-height:1.4;">Hay un pedido anterior que no confirmaste. ¿Qué quieres hacer con tu carrito actual?</p>
+      </div>
+      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn-send-whatsapp" id="orphanChoiceCombine">Combinar productos</button>
+        <button class="btn-add-playazo" id="orphanChoiceKeep" style="background:#64748b;">Conservar mi carrito</button>
+      </div>
+    </div>
+  </div>
+
   <!-- v2.3.4: PREGUNTA DE ENVÍO (cerrar con la X no borra nada) -->
   <div class="modal-overlay" id="pendingQuestionModal">
     <div class="modal-sheet" onclick="event.stopPropagation()">
@@ -1236,7 +1252,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.6' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.7' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1267,7 +1283,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.6' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.7' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1328,6 +1344,7 @@
 
     // ===== v2.3.5: recuperación fiable de confirmación y bloqueo de envíos simultáneos =====
     const PENDING_STALE_MS = 30000;
+    let orphanCheckTimer = null; // v2.4.7: una sola revisión programada por página
     let myToken = null;
     let activePendingStoreId = null;
     let activeOrderId = null;
@@ -1469,10 +1486,12 @@
       heartbeatTimer = setInterval(() => {
         const sid = activePendingStoreId;
         if (!sid) { stopHeartbeat(); return; }
-        const p = readPending(sid);
-        if (!ownsPending(p)) { stopHeartbeat(); return; }
-        p.lastSeen = Date.now();
-        writePending(p);
+        withOrderLock(sid, () => {
+          const p = readPending(sid);
+          if (!ownsPending(p)) { stopHeartbeat(); return; }
+          p.lastSeen = Date.now();
+          writePending(p);
+        });
       }, 5000);
     }
 
@@ -1617,37 +1636,103 @@
 
     function restoreOrphanSnapshot(sid) {
       const p = readPending(sid);
+      if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
+        resetLocalPendingState();
+        closeSentQuestion();
+        updateCartBar();
+        renderProducts();
+        renderCartModalItems();
+        return;
+      }
+      closeSentQuestion();
+      const hasCart = Object.keys(cart).length > 0;
+      const hasSnapshot = Array.isArray(p.cartSnapshot) && p.cartSnapshot.length > 0;
+      if (!hasCart || !hasSnapshot) {
+        finishOrphanChoice(sid, 'combine');
+        return;
+      }
+      showOrphanChoiceModal(sid);
+    }
+
+    // v2.4.7: el cliente elige; nunca se reemplaza el carrito nuevo en silencio
+    function showOrphanChoiceModal(sid) {
+      document.getElementById('orphanChoiceCombine').onclick = () => finishOrphanChoice(sid, 'combine');
+      document.getElementById('orphanChoiceKeep').onclick = () => finishOrphanChoice(sid, 'keep');
+      document.getElementById('orphanChoiceModal').style.display = 'flex';
+    }
+
+    function finishOrphanChoice(sid, mode) {
+      document.getElementById('orphanChoiceModal').style.display = 'none';
+      const p = readPending(sid);
       if (p && p.orderId === activeOrderId && ownsPending(p)) {
-        const hasCart = Object.keys(cart).length > 0;
-        const replace = hasCart
-          ? confirm("Tu carrito actual tiene productos. ¿Reemplazarlo por el carrito guardado?\n\nAceptar: reemplazar.\nCancelar: conservar mi carrito actual.")
-          : true;
-        if (replace && Array.isArray(p.cartSnapshot) && p.cartSnapshot.length > 0) {
-          cart = {};
-          p.cartSnapshot.forEach(it => {
-            if (it && it.product) cart[it.product.id] = { product: it.product, qty: it.qty };
-          });
-          cartStoreId = sid;
-          cartOriginName = currentStore ? (currentStore.name || '') : '';
-          cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
-          saveActiveCart();
-        }
+        if (mode === 'combine' && Array.isArray(p.cartSnapshot)) mergeSnapshotIntoCart(sid, p.cartSnapshot);
         removePending(sid);
       }
       resetLocalPendingState();
       closeSentQuestion();
+      hidePendingNotice();
       updateCartBar();
       renderProducts();
       renderCartModalItems();
     }
 
+    // v2.4.7: suma cantidades del pedido anterior al carrito actual; usa precios y disponibilidad actuales
+    function mergeSnapshotIntoCart(sid, snapshot) {
+      let skipped = 0;
+      snapshot.forEach(it => {
+        if (!it || !it.product) return;
+        const current = productsList.find(pr => pr.id === it.product.id);
+        if (!current || current.is_available === false) { skipped++; return; }
+        const prevQty = cart[current.id] ? cart[current.id].qty : 0;
+        cart[current.id] = { product: current, qty: prevQty + (Number(it.qty) || 0) };
+      });
+      if (Object.keys(cart).length > 0) {
+        cartStoreId = sid;
+        cartOriginName = currentStore ? (currentStore.name || '') : '';
+        cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
+      }
+      saveActiveCart();
+      if (skipped > 0) {
+        alert(skipped + " producto(s) del pedido anterior ya no están disponibles y no se agregaron.");
+      }
+    }
+
+    // v2.4.7: una sola revisión programada; reintenta hasta que el pedido quede libre
+    function scheduleOrphanCheck(sid, orderId) {
+      if (orphanCheckTimer) clearTimeout(orphanCheckTimer);
+      const p = readPending(sid);
+      const wait = p ? Math.max(0, PENDING_STALE_MS - (Date.now() - (p.lastSeen || 0))) + 700 : 1000;
+      showPendingNotice("Tienes un pedido pendiente de otra pestaña. Lo revisamos en unos segundos; no necesitas recargar la página.");
+      orphanCheckTimer = setTimeout(() => {
+        orphanCheckTimer = null;
+        recoverOrphan(sid, orderId);
+      }, wait);
+    }
+
+    function showPendingNotice(text) {
+      let el = document.getElementById('pendingNotice');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'pendingNotice';
+        el.style.cssText = 'position:fixed;left:12px;right:12px;top:12px;z-index:9000;background:#0f172a;color:#ffffff;padding:12px 14px;border-radius:12px;font-size:14px;text-align:center;box-shadow:0 6px 18px rgba(15,23,42,.25);';
+        document.body.appendChild(el);
+      }
+      el.innerText = text;
+      el.style.display = 'block';
+    }
+
+    function hidePendingNotice() {
+      const el = document.getElementById('pendingNotice');
+      if (el) el.style.display = 'none';
+    }
+
     function recoverOrphan(sid, orderId) {
       withOrderLock(sid, async () => {
         const p = readPending(sid);
-        if (!p || p.orderId !== orderId) return;
+        if (!p || p.orderId !== orderId) { hidePendingNotice(); return; }
         if (Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS) {
           mtdDiag('TD-007', 'pending-other-tab-orphan', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
-          alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Intenta de nuevo en unos minutos.");
+          scheduleOrphanCheck(sid, orderId);
           return;
         }
         const token = newToken();
@@ -1660,6 +1745,7 @@
         activeOrderId = orderId;
         questionShown = true;
         startHeartbeat();
+        hidePendingNotice();
         askSentQuestion(
           "Encontramos un pedido pendiente de una sesión anterior. ¿Ya lo enviaste por WhatsApp?",
           () => resolveSent(false),
@@ -1698,7 +1784,7 @@
       const recent = Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS;
       if (recent) {
         mtdDiag('TD-007', 'pending-other-tab-active', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
-        alert("Tienes un pedido pendiente en otra pestaña de esta tienda. Vuelve a esa pestaña o intenta de nuevo en unos minutos.");
+        scheduleOrphanCheck(sid, p.orderId);
         return;
       }
       setTimeout(() => recoverOrphan(sid, p.orderId), 3000);
@@ -1879,9 +1965,15 @@
         return;
       }
       const sid = currentStore.id;
-      if (readPending(sid)) {
+      const pendingNow = readPending(sid);
+      if (pendingNow) {
         mtdDiag('TD-007', 'pending-confirmation-block', 'Se bloqueó un nuevo envío porque hay un pedido pendiente de confirmar.');
-        alert("Tienes un pedido pendiente de confirmar para esta tienda. Se resolverá al volver a esta pestaña.");
+        if (activePendingStoreId === sid && ownsPending(pendingNow)) {
+          alert("Tienes un pedido pendiente de confirmar para esta tienda. Responde la pregunta de SÍ o NO que aparece en pantalla.");
+          onPendingVisibility();
+        } else {
+          scheduleOrphanCheck(sid, pendingNow.orderId);
+        }
         return;
       }
 
