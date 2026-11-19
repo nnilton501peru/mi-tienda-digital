@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.7 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.4.8 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.7</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.4.8</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.7' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.7' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.8' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.8' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -901,7 +901,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.7</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.8</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -970,6 +970,7 @@
       </div>
 
       <div class="modal-body">
+        <div id="swapBackupBar" style="display:none;"></div>
         <div class="cart-items-list" id="cartItemsList">
           <!-- Items del carrito -->
         </div>
@@ -1087,6 +1088,28 @@
       <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
         <button class="btn-add-playazo" onclick="applyReviewChanges()">Aplicar cambios y revisar de nuevo</button>
         <button class="btn-add-playazo" style="background:#64748b;" onclick="closeReviewModal()">Cancelar, conservar mi carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v2.4.8: ventana única de recuperación (dos etapas) -->
+  <div class="modal-overlay" id="recoveryModal">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title" id="recoveryTitle">¿Enviaste tu pedido por WhatsApp?</h2>
+        <button class="btn-close" onclick="closeRecoveryWindow()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="recoveryText" style="font-size:0.95rem; color:#1e293b; line-height:1.4;"></p>
+        <div id="recoveryViewA" style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+          <button class="btn-send-whatsapp" id="recoveryYesBtn">Sí, ya lo envié</button>
+          <button class="btn-add-playazo" id="recoveryNoBtn" style="background:#ffffff; color:#0369a1; border:2px solid #0369a1;">No, todavía no lo envié</button>
+        </div>
+        <div id="recoveryViewB" style="display:none; flex-direction:column; gap:10px; margin-top:12px;">
+          <button class="btn-add-playazo" id="recoveryKeepBtn" style="background:#64748b;">Quedarme con mis productos nuevos</button>
+          <button class="btn-add-playazo" id="recoveryOnlyPrevBtn">Recuperar solamente el pedido anterior</button>
+          <button class="btn-send-whatsapp" id="recoveryCombineBtn">Combinar los dos carritos</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1252,7 +1275,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.7' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.8' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1283,7 +1306,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.7' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.8' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1345,6 +1368,8 @@
     // ===== v2.3.5: recuperación fiable de confirmación y bloqueo de envíos simultáneos =====
     const PENDING_STALE_MS = 30000;
     let orphanCheckTimer = null; // v2.4.7: una sola revisión programada por página
+    let orphanCountdownTimer = null; // v2.4.8: cuenta regresiva orientativa
+    let recoveryWindowOpen = false; // v2.4.8: ventana de recuperación abierta
     let myToken = null;
     let activePendingStoreId = null;
     let activeOrderId = null;
@@ -1634,6 +1659,262 @@
       }
     }
 
+    // ===== v2.4.8: ventana de recuperación de dos etapas =====
+    function snapshotSummary(p) {
+      const items = Array.isArray(p.cartSnapshot) ? p.cartSnapshot : [];
+      let count = 0, total = 0;
+      items.forEach(it => {
+        if (!it || !it.product) return;
+        const qty = Number(it.qty) || 0;
+        count += qty;
+        total += (parseFloat(it.product.price) || 0) * qty;
+      });
+      return { count: count, total: total };
+    }
+
+    function showRecoveryWindow(sid) {
+      const p = readPending(sid);
+      if (!p) return;
+      recoveryWindowOpen = true;
+      document.getElementById('recoveryYesBtn').onclick = () => recoveryYes(sid);
+      document.getElementById('recoveryNoBtn').onclick = () => showRecoveryViewB();
+      document.getElementById('recoveryKeepBtn').onclick = () => recoveryKeep(sid);
+      document.getElementById('recoveryOnlyPrevBtn').onclick = () => recoveryOnlyPrevious(sid);
+      document.getElementById('recoveryCombineBtn').onclick = () => recoveryCombine(sid);
+      showRecoveryViewA(snapshotSummary(p));
+      document.getElementById('recoveryModal').style.display = 'flex';
+    }
+
+    function showRecoveryViewA(sum) {
+      document.getElementById('recoveryTitle').innerText = '¿Enviaste tu pedido por WhatsApp?';
+      document.getElementById('recoveryText').innerText = 'Encontramos un pedido anterior pendiente de confirmar: ' + sum.count + ' producto(s) por S/ ' + sum.total.toFixed(2) + '.';
+      document.getElementById('recoveryViewA').style.display = 'flex';
+      document.getElementById('recoveryViewB').style.display = 'none';
+    }
+
+    function showRecoveryViewB() {
+      document.getElementById('recoveryTitle').innerText = '¿Qué quieres hacer con tus productos?';
+      document.getElementById('recoveryText').innerText = 'Quedarme con mis productos nuevos: descarta el pedido anterior y tu carrito no cambia. Recuperar solamente el pedido anterior: tus productos nuevos se guardan en esta pestaña. Combinar: junta ambos carritos y suma las cantidades.';
+      document.getElementById('recoveryViewA').style.display = 'none';
+      document.getElementById('recoveryViewB').style.display = 'flex';
+    }
+
+    function closeRecoveryWindow() {
+      document.getElementById('recoveryModal').style.display = 'none';
+      recoveryWindowOpen = false;
+    }
+
+    function recoveryOwnedCheck(sid) {
+      return !!(activePendingStoreId === sid && activeOrderId);
+    }
+
+    // Fuera de cualquier lock: resolveSent adquiere su propio lock
+    async function recoveryYes(sid) {
+      if (!recoveryOwnedCheck(sid)) {
+        alert("No se puede confirmar este pedido desde esta pestaña. No se ha registrado nada.");
+        return;
+      }
+      closeRecoveryWindow();
+      await resolveSent(false);
+    }
+
+    function recoveryKeep(sid) { recoveryFinish(sid, 'keep'); }
+    function recoveryCombine(sid) { recoveryFinish(sid, 'combine'); }
+
+    // Un solo lock; dentro solo funciones síncronas (finishOrphanChoice no adquiere lock)
+    function recoveryFinish(sid, mode) {
+      if (!recoveryOwnedCheck(sid)) {
+        alert("No se puede cambiar este pedido desde esta pestaña. No se ha registrado nada.");
+        return;
+      }
+      withOrderLock(sid, () => {
+        const p = readPending(sid);
+        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
+          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
+          resetLocalPendingState();
+          closeRecoveryWindow();
+          return;
+        }
+        closeRecoveryWindow();
+        finishOrphanChoice(sid, mode);
+      });
+    }
+
+    function swapKey(sid) { return 'playazo_swap_' + sid; }
+
+    function readSwap(sid) {
+      try {
+        const raw = sessionStorage.getItem(swapKey(sid));
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || obj.storeId !== sid || !obj.cart || Object.keys(obj.cart).length === 0) return null;
+        return obj;
+      } catch (e) { return null; }
+    }
+
+    // Escribe y verifica la lectura antes de dar la escritura por buena
+    function writeSwapVerified(sid, obj) {
+      try {
+        const raw = JSON.stringify(obj);
+        sessionStorage.setItem(swapKey(sid), raw);
+        return sessionStorage.getItem(swapKey(sid)) === raw;
+      } catch (e) { return false; }
+    }
+
+    function removeSwap(sid) {
+      try { sessionStorage.removeItem(swapKey(sid)); } catch (e) {}
+    }
+
+    function activeCartPersisted() {
+      try {
+        const saved = sessionStorage.getItem('playazo_active_cart');
+        const savedStore = sessionStorage.getItem('playazo_active_cart_store_id');
+        return saved === JSON.stringify(cart) && savedStore === cartStoreId;
+      } catch (e) { return false; }
+    }
+
+    // Solo pedido anterior: primero respaldo verificado, luego carrito, luego borrar pendiente
+    function recoveryOnlyPrevious(sid) {
+      if (!recoveryOwnedCheck(sid)) {
+        alert("No se puede cambiar este pedido desde esta pestaña. No se ha registrado nada.");
+        return;
+      }
+      if (sendInFlight) {
+        alert("Espera a que termine el envío en curso antes de cambiar tus productos.");
+        return;
+      }
+      withOrderLock(sid, () => {
+        const p = readPending(sid);
+        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
+          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
+          resetLocalPendingState();
+          closeRecoveryWindow();
+          return;
+        }
+        if (readSwap(sid)) {
+          alert("Ya tienes productos guardados de otra recuperación en esta pestaña. Usa el botón del carrito antes de continuar.");
+          return;
+        }
+        const rebuilt = {};
+        (Array.isArray(p.cartSnapshot) ? p.cartSnapshot : []).forEach(it => {
+          if (!it || !it.product) return;
+          const current = productsList.find(pr => pr.id === it.product.id);
+          if (!current || current.is_available === false) return;
+          rebuilt[current.id] = { product: current, qty: Number(it.qty) || 0 };
+        });
+        if (Object.keys(rebuilt).length === 0) {
+          alert("Los productos del pedido anterior ya no están disponibles. Puedes elegir otra opción.");
+          return;
+        }
+        const prevCart = JSON.parse(JSON.stringify(cart));
+        const prevStoreId = cartStoreId, prevName = cartOriginName, prevSlug = cartOriginSlug;
+        const hadNew = Object.keys(prevCart).length > 0;
+        if (hadNew) {
+          const saved = writeSwapVerified(sid, { storeId: sid, label: 'nuevos', cart: prevCart, originName: prevName, originSlug: prevSlug });
+          if (!saved) {
+            alert("No se pudieron guardar tus productos nuevos. No se ha cambiado nada.");
+            return;
+          }
+        }
+        const rollback = () => {
+          cart = prevCart;
+          cartStoreId = prevStoreId;
+          cartOriginName = prevName;
+          cartOriginSlug = prevSlug;
+          saveActiveCart();
+          if (hadNew) removeSwap(sid);
+        };
+        cart = rebuilt;
+        cartStoreId = sid;
+        cartOriginName = currentStore ? (currentStore.name || '') : '';
+        cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
+        saveActiveCart();
+        if (!activeCartPersisted()) {
+          rollback();
+          alert("No se pudo preparar el pedido anterior. Tus productos se conservaron.");
+          return;
+        }
+        removePending(sid);
+        if (readPending(sid)) {
+          rollback();
+          alert("No se pudo cerrar el pedido anterior. Tus productos se conservaron. Intenta de nuevo.");
+          return;
+        }
+        resetLocalPendingState();
+        closeRecoveryWindow();
+        hidePendingNotice();
+        if (hadNew) {
+          showPendingNotice("Tus productos nuevos quedaron guardados. Puedes volver a ellos desde el carrito. Si cierras esta pestaña, se perderán.");
+        }
+        updateCartBar();
+        renderProducts();
+        renderCartModalItems();
+      });
+    }
+
+    // Alternancia: el respaldo siempre se sobrescribe con el otro carrito, verificado antes
+    function toggleSwap() {
+      if (!currentStore) return;
+      const sid = currentStore.id;
+      if (sendInFlight) {
+        alert("Espera a que termine el envío en curso antes de cambiar tus productos.");
+        return;
+      }
+      if (readPending(sid)) {
+        alert("Primero responde si enviaste el pedido anterior.");
+        return;
+      }
+      const swap = readSwap(sid);
+      if (!swap) { updateSwapControls(); return; }
+      const prevCart = JSON.parse(JSON.stringify(cart));
+      const prevStoreId = cartStoreId, prevName = cartOriginName, prevSlug = cartOriginSlug;
+      const currentIsEmpty = Object.keys(prevCart).length === 0;
+      const otherLabel = swap.label === 'nuevos' ? 'anterior' : 'nuevos';
+      if (!currentIsEmpty) {
+        const ok = writeSwapVerified(sid, { storeId: sid, label: otherLabel, cart: prevCart, originName: prevName, originSlug: prevSlug });
+        if (!ok) {
+          alert("No se pudo guardar tu carrito actual. No se ha cambiado nada.");
+          return;
+        }
+      }
+      cart = JSON.parse(JSON.stringify(swap.cart));
+      cartStoreId = sid;
+      cartOriginName = swap.originName || (currentStore.name || '');
+      cartOriginSlug = swap.originSlug || (currentStore.slug || '');
+      saveActiveCart();
+      if (!activeCartPersisted()) {
+        cart = prevCart;
+        cartStoreId = prevStoreId;
+        cartOriginName = prevName;
+        cartOriginSlug = prevSlug;
+        saveActiveCart();
+        if (!currentIsEmpty) writeSwapVerified(sid, swap);
+        alert("No se pudo cambiar de carrito. Tus productos se conservaron.");
+      } else if (currentIsEmpty) {
+        removeSwap(sid);
+      }
+      updateSwapControls();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+    }
+
+    function updateSwapControls() {
+      const bar = document.getElementById('swapBackupBar');
+      if (!bar) return;
+      const sid = currentStore ? currentStore.id : null;
+      const swap = sid ? readSwap(sid) : null;
+      if (!swap) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+      }
+      const label = swap.label === 'nuevos' ? 'Volver a mis productos nuevos' : 'Ver pedido anterior';
+      bar.innerHTML = '<button type="button" class="btn-add-playazo" style="width:100%; margin-bottom:6px;" onclick="toggleSwap()">' + label + '</button>' +
+        '<div style="font-size:12px; color:#334155; margin-bottom:10px;">Si cierras esta pestaña, estos productos se pierden.</div>';
+      bar.style.display = 'block';
+    }
+
     function restoreOrphanSnapshot(sid) {
       const p = readPending(sid);
       if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
@@ -1700,11 +1981,19 @@
     // v2.4.7: una sola revisión programada; reintenta hasta que el pedido quede libre
     function scheduleOrphanCheck(sid, orderId) {
       if (orphanCheckTimer) clearTimeout(orphanCheckTimer);
+      if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
       const p = readPending(sid);
       const wait = p ? Math.max(0, PENDING_STALE_MS - (Date.now() - (p.lastSeen || 0))) + 700 : 1000;
-      showPendingNotice("Tienes un pedido pendiente de otra pestaña. Lo revisamos en unos segundos; no necesitas recargar la página.");
+      const endAt = Date.now() + wait;
+      const render = () => {
+        const secs = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+        showPendingNotice("Revisando tu pedido pendiente de otra pestaña (aprox. " + secs + " s). No necesitas recargar la página.");
+      };
+      render();
+      orphanCountdownTimer = setInterval(render, 1000);
       orphanCheckTimer = setTimeout(() => {
         orphanCheckTimer = null;
+        if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
         recoverOrphan(sid, orderId);
       }, wait);
     }
@@ -1722,6 +2011,7 @@
     }
 
     function hidePendingNotice() {
+      if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
       const el = document.getElementById('pendingNotice');
       if (el) el.style.display = 'none';
     }
@@ -1738,19 +2028,15 @@
         const token = newToken();
         p.owner = { tabId: getTabId(), token: token, gen: ((p.owner && p.owner.gen) || 0) + 1 };
         p.lastSeen = Date.now();
+        p.recovered = true;
         if (!writePending(p)) return;
         myToken = token;
         try { sessionStorage.setItem(tokenKey(sid), token); } catch (e) {}
         activePendingStoreId = sid;
         activeOrderId = orderId;
-        questionShown = true;
         startHeartbeat();
         hidePendingNotice();
-        askSentQuestion(
-          "Encontramos un pedido pendiente de una sesión anterior. ¿Ya lo enviaste por WhatsApp?",
-          () => resolveSent(false),
-          () => restoreOrphanSnapshot(sid)
-        );
+        showRecoveryWindow(sid);
       });
     }
 
@@ -1787,7 +2073,7 @@
         scheduleOrphanCheck(sid, p.orderId);
         return;
       }
-      setTimeout(() => recoverOrphan(sid, p.orderId), 3000);
+      setTimeout(() => recoverOrphan(sid, p.orderId), 1000);
     }
 
     function schedulePendingQuestion(p) {
@@ -1810,6 +2096,14 @@
         resetLocalPendingState();
         closeSentQuestion();
         alert("Este pedido se retomó en otra pestaña. No envíes este carrito desde aquí.");
+        return;
+      }
+      if (p.recovered) {
+        if (p.state === 'PENDING' && !recoveryWindowOpen) {
+          activePendingStoreId = sid;
+          activeOrderId = p.orderId;
+          showRecoveryWindow(sid);
+        }
         return;
       }
       if (p.state === 'PENDING' && !questionShown) {
@@ -2366,6 +2660,7 @@
       if (items.length === 0) {
         container.innerHTML = '<div class="empty-state" style="padding:20px;">Tu carrito está vacío. Agrega productos con "+ Agregar".</div>';
         if (estimatedBox) estimatedBox.style.display = 'none';
+        updateSwapControls();
         return;
       }
 
@@ -2398,6 +2693,7 @@
         estimatedValue.innerText = `S/ ${estimatedTotal.toFixed(2)}`;
         estimatedBox.style.display = 'flex';
       }
+      updateSwapControls();
     }
 
     function showOrderSuccessBanner() {
