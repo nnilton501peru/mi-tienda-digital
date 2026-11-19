@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.5.5 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.5.6 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.5.5</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.5.6</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.5' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.5' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.6' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.6' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -857,7 +857,7 @@
       width: 100%;
       box-sizing: border-box;
       padding: 11px 44px 11px 14px;
-      border: 1px solid #cbd5e1;
+      border: 2px solid #9299a5;
       border-radius: 12px;
       font-size: 15px;
       background: #ffffff;
@@ -901,7 +901,9 @@
     .hist-date { font-size: 15px; color: #334155; margin-bottom: 6px; }
     .hist-store { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
     .hist-label { display: inline-block; background: #0369a1; color: #ffffff; font-size: 15px; font-weight: 700; padding: 5px 12px; border-radius: 999px; margin-bottom: 10px; }
-    .hist-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 18px; font-weight: 700; color: #0f172a; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+    .hist-item { display: block; font-size: 17px; line-height: 1.35; font-weight: 800; color: #0f172a; padding: 9px 0 2px; }
+    .hist-item-detail { font-size: 14px; line-height: 1.35; color: #475569; padding: 0 0 9px; border-bottom: 1px solid #e2e8f0; }
+    .hist-explanation { margin-top: 9px; font-size: 11px; line-height: 1.35; color: #64748b; }
     .hist-item-price { font-size: 17px; white-space: nowrap; }
     .hist-total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; background: #f1f5f9; padding: 10px 12px; border-radius: 12px; font-size: 20px; font-weight: 800; color: #0f172a; }
     .hist-btn { width: 100%; min-height: 56px; margin-top: 12px; font-size: 18px; font-weight: 800; border-radius: 14px; }
@@ -914,7 +916,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.5</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.6</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1173,7 +1175,68 @@
       try { if (window.MTD_DIAG) window.MTD_DIAG.record(code, phase, message, metadata || {}); } catch (_) {}
     }
 
+    // v2.5.6: adapta el modal del carrito al área visible cuando aparece el teclado móvil.
+    function keepCheckoutInputVisible(input) {
+      const modal = document.getElementById('cartModal');
+      const body = modal ? modal.querySelector('.modal-body') : null;
+      if (!modal || !body || modal.style.display !== 'flex' || !input) return;
+      const inputRect = input.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      const margin = 18;
+      if (inputRect.bottom > bodyRect.bottom - margin) {
+        body.scrollTop += inputRect.bottom - (bodyRect.bottom - margin);
+      } else if (inputRect.top < bodyRect.top + 8) {
+        body.scrollTop -= (bodyRect.top + 8) - inputRect.top;
+      }
+    }
+
+    function syncCartModalWithVisualViewport() {
+      const modal = document.getElementById('cartModal');
+      if (!modal || modal.style.display !== 'flex') return;
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      const sheet = modal.querySelector('.modal-sheet');
+      modal.style.top = Math.max(0, viewport.offsetTop) + 'px';
+      modal.style.height = Math.max(220, viewport.height) + 'px';
+      modal.style.bottom = 'auto';
+      if (sheet) sheet.style.maxHeight = Math.max(220, viewport.height - 8) + 'px';
+      const active = document.activeElement;
+      if (active && (active.id === 'custName' || active.id === 'custAddress' || active.id === 'custNotes')) {
+        requestAnimationFrame(() => keepCheckoutInputVisible(active));
+      }
+    }
+
+    function resetCartModalViewport() {
+      const modal = document.getElementById('cartModal');
+      const sheet = modal ? modal.querySelector('.modal-sheet') : null;
+      if (!modal) return;
+      modal.style.top = '';
+      modal.style.height = '';
+      modal.style.bottom = '';
+      if (sheet) sheet.style.maxHeight = '';
+    }
+
+    function setupCheckoutViewportHandling() {
+      const nameInput = document.getElementById('custName');
+      const addressInput = document.getElementById('custAddress');
+      const notesInput = document.getElementById('custNotes');
+      [nameInput, addressInput, notesInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener('focus', () => {
+          requestAnimationFrame(() => keepCheckoutInputVisible(input));
+        });
+        input.addEventListener('input', () => {
+          requestAnimationFrame(() => keepCheckoutInputVisible(input));
+        });
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', syncCartModalWithVisualViewport);
+        window.visualViewport.addEventListener('scroll', syncCartModalWithVisualViewport);
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
+      setupCheckoutViewportHandling();
       // 1. Acceso directo con la clave pública configurada
       let anonKey = (typeof SUPABASE_ANON_KEY === 'string') ? SUPABASE_ANON_KEY.trim() : "";
 
@@ -1233,7 +1296,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.5' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.6' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1264,7 +1327,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.5' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.6' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1696,8 +1759,8 @@
       }
       notice.style.display = 'block';
       input.addEventListener('input', clearNameNotice, { once: true });
-      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }, 250);
+      input.focus({ preventScroll: true });
+      requestAnimationFrame(() => keepCheckoutInputVisible(input));
     }
 
     function clearNameNotice() {
@@ -1705,6 +1768,7 @@
       if (input) input.classList.remove('field-missing');
       const notice = document.getElementById('customerNameNotice');
       if (notice) notice.style.display = 'none';
+      if (input) requestAnimationFrame(() => keepCheckoutInputVisible(input));
     }
 
     async function sendWhatsAppOrder() {
@@ -2147,11 +2211,13 @@
       }
       renderCartModalItems();
       document.getElementById('cartModal').style.display = 'flex';
+      syncCartModalWithVisualViewport();
     }
 
     function closeCartModal(e) {
       if (!e || e.target.id === 'cartModal') {
         document.getElementById('cartModal').style.display = 'none';
+        resetCartModalViewport();
       }
     }
 
@@ -2220,10 +2286,13 @@
           body.innerHTML = history.map(h => {
             const isNew = Array.isArray(h.items) && h.items.length > 0 && typeof h.items[0] === 'object';
             if (isNew) {
-              const itemsHtml = h.items.map(it =>
-                '<div class="hist-item"><span>&bull; ' + (Number(it.qty) || 0) + ' × ' + escapeHTML(it.name) + '</span>' +
-                '<span class="hist-item-price">S/ ' + (Number(it.price) || 0).toFixed(2) + '</span></div>'
-              ).join('');
+              const itemsHtml = h.items.map(it => {
+                const cantidad = Math.max(0, Number(it.qty) || 0);
+                const precioUnitario = Number(it.price) || 0;
+                const subtotalProducto = cantidad * precioUnitario;
+                return '<div class="hist-item">✅ ' + escapeHTML(String(it.name || '').toLocaleUpperCase('es-PE')) + ' — S/ ' + subtotalProducto.toFixed(2) + '</div>' +
+                  '<div class="hist-item-detail">• ' + cantidad + ' unid. × S/ ' + precioUnitario.toFixed(2) + ' c/u</div>';
+              }).join('');
               const btn = h.orderId
                 ? '<button class="btn-add-playazo hist-btn" onclick="reorderFromHistory(\'' + escapeHTML(h.orderId) + '\')">Volver a pedir</button>'
                 : '';
@@ -2232,7 +2301,8 @@
                 '<div class="hist-store">' + escapeHTML(h.store || h.storeName || '') + '</div>' +
                 '<span class="hist-label">Tu lista de pedido</span>' +
                 itemsHtml +
-                '<div class="hist-total"><span>Total</span><span>S/ ' + escapeHTML(h.total) + '</span></div>' +
+                '<div class="hist-explanation">El precio indicado es por unidad. El subtotal se calcula multiplicando el precio por la cantidad solicitada.</div>' +
+                '<div class="hist-total"><span>Total a pagar</span><span>S/ ' + escapeHTML(h.total) + '</span></div>' +
                 btn +
                 '</div>';
             }
