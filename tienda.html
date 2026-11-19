@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.5.0 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.5.1 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.5.0</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.5.1</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.0' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.0' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.1' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.1' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -892,6 +892,19 @@
       cursor: pointer;
       padding: 0;
     }
+    /* v2.5.1: aviso de nombre y resaltado del campo */
+    .field-missing { border: 2px solid #16a34a !important; box-shadow: 0 0 0 4px rgba(22,163,74,0.2); transition: border-color .3s ease, box-shadow .3s ease; }
+    .name-notice { display: none; margin: 6px 0 2px; padding: 10px 12px; border-radius: 12px; background: #f0fdf4; border: 1px solid #86efac; color: #14532d; font-size: 14px; line-height: 1.4; }
+    .name-notice strong { display: block; font-size: 15px; margin-bottom: 2px; }
+    /* v2.5.1: historial con letras grandes (solo en Mis listas) */
+    .hist-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(15,23,42,0.06); }
+    .hist-date { font-size: 15px; color: #334155; margin-bottom: 6px; }
+    .hist-store { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+    .hist-label { display: inline-block; background: #0369a1; color: #ffffff; font-size: 15px; font-weight: 700; padding: 5px 12px; border-radius: 999px; margin-bottom: 10px; }
+    .hist-item { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 18px; font-weight: 700; color: #0f172a; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+    .hist-item-price { font-size: 17px; white-space: nowrap; }
+    .hist-total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; background: #f1f5f9; padding: 10px 12px; border-radius: 12px; font-size: 20px; font-weight: 800; color: #0f172a; }
+    .hist-btn { width: 100%; min-height: 56px; margin-top: 12px; font-size: 18px; font-weight: 800; border-radius: 14px; }
   </style>
 </head>
 <body>
@@ -901,7 +914,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.0</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.1</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1220,7 +1233,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.0' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.1' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1251,7 +1264,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.0' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.1' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1663,13 +1676,66 @@
       if (skipped > 0) alert(skipped + ' producto(s) de esa lista ya no están disponibles y no se agregaron.');
     }
 
+    // v2.5.1: aviso propio de la tienda cuando falta el nombre
+    function showNameNotice() {
+      const input = document.getElementById('custName');
+      if (!input) return;
+      input.classList.add('field-missing');
+      let notice = document.getElementById('customerNameNotice');
+      if (!notice) {
+        notice = document.createElement('div');
+        notice.id = 'customerNameNotice';
+        notice.className = 'name-notice';
+        const title = document.createElement('strong');
+        title.innerText = 'Falta tu nombre';
+        const text = document.createElement('span');
+        text.innerText = 'Para continuar con tu pedido, escribe tu nombre en el campo resaltado.';
+        notice.appendChild(title);
+        notice.appendChild(text);
+        input.insertAdjacentElement('afterend', notice);
+      }
+      notice.style.display = 'block';
+      input.addEventListener('input', clearNameNotice, { once: true });
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }, 250);
+    }
+
+    function clearNameNotice() {
+      const input = document.getElementById('custName');
+      if (input) input.classList.remove('field-missing');
+      const notice = document.getElementById('customerNameNotice');
+      if (notice) notice.style.display = 'none';
+    }
+
     async function sendWhatsAppOrder() {
       if (sendInFlight) { mtdDiag('TD-007', 'send-duplicate-blocked', 'Se bloqueó un segundo intento mientras otro envío estaba en curso.'); return; }
       if (!currentStore) return;
+      // v2.5.1: todas las comprobaciones locales ocurren ANTES de crear la ventana o bloquear el botón
+      if (currentStore.is_active === false) {
+        alert("Esta tienda se encuentra temporalmente pausada y no está recibiendo pedidos.");
+        return;
+      }
+      if (cartBlockedByOther()) {
+        showPendingCartPanel();
+        return;
+      }
+      if (Object.keys(cart).length === 0) {
+        alert('Agrega al menos un producto con "+ Agregar" antes de enviar.');
+        return;
+      }
+      if (!document.getElementById('custName').value.trim()) {
+        showNameNotice();
+        return;
+      }
+      const phoneCheck = currentStore.whatsapp ? currentStore.whatsapp.replace(/[^0-9]/g, '') : '';
+      if (!phoneCheck) {
+        alert("Esta tienda aún no ha configurado su número de WhatsApp de pedidos.");
+        return;
+      }
       sendInFlight = true;
       const sendButton = document.getElementById('btnSendWhatsApp');
       if (sendButton) sendButton.disabled = true;
-      // v2.5.0: ventana en blanco creada con el gesto del usuario, antes de cualquier espera
+      // Ventana en blanco creada con el gesto del usuario, después de las comprobaciones locales
       let waWindow = null;
       try { waWindow = window.open('', '_blank'); } catch (e) { waWindow = null; }
       if (!waWindow) {
@@ -1760,8 +1826,12 @@
       });
 
       let mensaje = `¡Hola! Quiero hacer el siguiente pedido en *${currentStore.name || 'Mi Tienda'}*:\n\n`;
+      if (sentLines.length === 1 && sentLines[0].qty === 1) {
+        mensaje += '📦 *PRODUCTO:*\n' + sentLines[0].qty + ' × ' + sentLines[0].name + ' — S/ ' + sentLines[0].price.toFixed(2) + '\n\n';
+      } else {
       mensaje += `📦 *PRODUCTOS:*\n${productosTexto}\n`;
       mensaje += `💰 *TOTAL A PAGAR: S/ ${total.toFixed(2)}*\n\n`;
+      }
       mensaje += `👤 *Cliente:* ${custName}\n`;
       if (custAddress) mensaje += `📍 *Dirección/Entrega:* ${custAddress}\n`;
       if (custNotes) mensaje += `📝 *Nota:* ${custNotes}\n`;
@@ -2140,19 +2210,29 @@
         } else {
           body.innerHTML = history.map(h => {
             const isNew = Array.isArray(h.items) && h.items.length > 0 && typeof h.items[0] === 'object';
-            const lines = isNew
-              ? h.items.map(it => '<div>&bull; ' + escapeHTML(it.qty + 'x ' + it.name) + '</div>').join('')
-              : (h.items || []).map(it => '<div>&bull; ' + escapeHTML(it) + '</div>').join('');
-            const label = isNew ? 'Pedido preparado' : 'Registro anterior';
-            const btn = isNew && h.orderId
-              ? '<button class="btn-add-playazo" style="width:100%; margin-top:8px;" onclick="reorderFromHistory(\'' + escapeHTML(h.orderId) + '\')">Volver a pedir</button>'
-              : '';
+            if (isNew) {
+              const itemsHtml = h.items.map(it =>
+                '<div class="hist-item"><span>&bull; ' + (Number(it.qty) || 0) + ' × ' + escapeHTML(it.name) + '</span>' +
+                '<span class="hist-item-price">S/ ' + (Number(it.price) || 0).toFixed(2) + '</span></div>'
+              ).join('');
+              const btn = h.orderId
+                ? '<button class="btn-add-playazo hist-btn" onclick="reorderFromHistory(\'' + escapeHTML(h.orderId) + '\')">Volver a pedir</button>'
+                : '';
+              return '<div class="hist-card">' +
+                '<div class="hist-date">&#128197; ' + escapeHTML(h.date) + '</div>' +
+                '<div class="hist-store">' + escapeHTML(h.store || h.storeName || '') + '</div>' +
+                '<span class="hist-label">Tu lista de pedido</span>' +
+                itemsHtml +
+                '<div class="hist-total"><span>Total</span><span>S/ ' + escapeHTML(h.total) + '</span></div>' +
+                btn +
+                '</div>';
+            }
+            const legacyLines = (h.items || []).map(it => '<div>&bull; ' + escapeHTML(it) + '</div>').join('');
             return '<div class="history-card">' +
               '<div class="history-date">&#128197; ' + escapeHTML(h.date) + ' &bull; <b>' + escapeHTML(h.store || h.storeName || '') + '</b></div>' +
-              '<div style="font-size:0.8rem; color:#334155; margin:2px 0 4px;">' + label + '. Es una referencia tuya: no confirma que el mensaje se haya enviado.</div>' +
-              '<div style="font-size:0.88rem; color:#1e293b; margin:4px 0;">' + lines + '</div>' +
+              '<div style="font-size:0.8rem; color:#334155; margin:2px 0 4px;">Registro anterior</div>' +
+              '<div style="font-size:0.88rem; color:#1e293b; margin:4px 0;">' + legacyLines + '</div>' +
               '<div class="history-total">Total: S/ ' + escapeHTML(h.total) + '</div>' +
-              btn +
               '</div>';
           }).join('');
           if (footer) footer.style.display = 'block';
