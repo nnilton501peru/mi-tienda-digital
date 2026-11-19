@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.5.2 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.5.3 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.5.2</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.5.3</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.2' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.2' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.3' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.3' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -914,7 +914,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.2</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.3</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -1233,7 +1233,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.2' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.3' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1264,7 +1264,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.2' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.3' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1826,12 +1826,19 @@
       });
 
       let mensaje = `¡Hola! Quiero hacer el siguiente pedido en *${currentStore.name || 'Mi Tienda'}*:\n\n`;
-      mensaje += '🛒 *DETALLE DE MI PEDIDO*\n\n';
+      mensaje += '🛒 *MI PEDIDO*\n\n';
       sentLines.forEach(l => {
-        mensaje += l.qty + ' × ' + l.name + ' — S/ ' + l.price.toFixed(2) + (l.qty > 1 ? ' c/u' : '') + '\n';
+        mensaje += '✓ ' + l.name + '\n\n';
+        if (l.qty === 1) {
+          mensaje += '1 unidad — *S/ ' + l.price.toFixed(2) + '*\n';
+        } else {
+          mensaje += l.qty + ' unidades × S/ ' + l.price.toFixed(2) + ' cada una\n\n';
+          mensaje += 'Subtotal: *S/ ' + (l.price * l.qty).toFixed(2) + '*\n';
+        }
+        mensaje += '\n';
       });
-      mensaje += '\n';
       if (!(sentLines.length === 1 && sentLines[0].qty === 1)) {
+        mensaje += '━━━━━━━━━━━━━━\n\n';
         mensaje += '💰 *TOTAL A PAGAR: S/ ' + total.toFixed(2) + '*\n\n';
       }
       mensaje += `👤 *Cliente:* ${custName}\n`;
