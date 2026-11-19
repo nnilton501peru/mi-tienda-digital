@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.5.6 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.5.7 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.5.6</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.5.7</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.6' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.6' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.7' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.7' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -138,10 +138,10 @@
       --card-border: #e2e8f0;
       --primary-btn: #0277bd;
       --primary-btn-hover: #01579b;
-      --cart-bar-bg: #fffde7;
-      --cart-bar-border: #fef08a;
-      --cart-btn-orange: #ff7043;
-      --cart-btn-orange-hover: #f4511e;
+      --cart-bar-bg: #f1f5f9;
+      --cart-bar-border: #cbd5e1;
+      --cart-btn-blue: #0369a1;
+      --cart-btn-blue-hover: #015985;
       --text-main: #0f172a;
       --text-muted: #64748b;
       --whatsapp-green: #25d366;
@@ -560,13 +560,24 @@
       background: #e2e8f0;
     }
 
+    .btn-card-qty-plus {
+      background: #0369a1;
+      color: #ffffff;
+      border: 1px solid #0369a1;
+    }
+
+    .btn-card-qty-plus:active {
+      background: #015985;
+      border-color: #015985;
+    }
+
     .card-qty-num {
       font-size: 1rem;
       font-weight: 800;
       color: var(--primary-btn);
     }
 
-    /* BARRA FLOTANTE INFERIOR ESTILO PLAYAZO (FONDO CREMA / BOTÓN NARANJA) */
+    /* BARRA FLOTANTE INFERIOR: PALETA AZUL, PRECIO VISIBLE Y CONTADOR NARANJA */
     .playazo-cart-bar {
       position: fixed;
       bottom: 0;
@@ -574,10 +585,11 @@
       right: 0;
       background: var(--cart-bar-bg);
       border-top: 1.5px solid var(--cart-bar-border);
-      padding: 12px 16px;
+      padding: 10px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
       z-index: 100;
       max-width: 600px;
       margin: 0 auto;
@@ -586,29 +598,101 @@
 
     .cart-bar-left {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
     }
 
-    .cart-units-text {
-      font-size: 0.84rem;
-      font-weight: 600;
+    .cart-icon-wrap {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #0369a1;
+      color: #ffffff;
+    }
+
+    .cart-count-badge {
+      position: absolute;
+      top: -5px;
+      right: -6px;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 5px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #f1f5f9;
+      border-radius: 999px;
+      background: #f97316;
+      color: #ffffff;
+      font-size: 0.75rem;
+      line-height: 1;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cart-price-wrap {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .cart-status-text {
+      display: none;
       color: #475569;
+      font-size: 0.72rem;
+      line-height: 1.15;
+      font-weight: 700;
     }
 
     .cart-price-text {
       font-size: 1.35rem;
       font-weight: 900;
-      color: #00707c;
+      color: #0f172a;
       letter-spacing: -0.3px;
+      white-space: nowrap;
     }
 
-    .btn-ver-carrito-orange {
-      background: var(--cart-btn-orange);
+    .btn-ver-carrito {
+      background: var(--cart-btn-blue);
       color: #ffffff;
       border: none;
-      padding: 11px 20px;
+      padding: 11px 15px;
       border-radius: 12px;
-      font-size: 0.98rem;
+      font-size: 0.92rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      box-shadow: 0 3px 8px rgba(3,105,161,0.25);
+      transition: background 0.15s;
+    }
+
+    .btn-ver-carrito:active {
+      background: var(--cart-btn-blue-hover);
+      transform: scale(0.97);
+    }
+
+    .btn-ver-carrito .cart-arrow {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+    }
+
+    /* Mantener sin cambios visuales el botón del modal de detalle de producto. */
+    .btn-ver-carrito-detail {
+      background: #ff7043;
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
       font-weight: 800;
       cursor: pointer;
       display: flex;
@@ -618,8 +702,8 @@
       transition: background 0.15s;
     }
 
-    .btn-ver-carrito-orange:active {
-      background: var(--cart-btn-orange-hover);
+    .btn-ver-carrito-detail:active {
+      background: #f4511e;
       transform: scale(0.97);
     }
 
@@ -916,7 +1000,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.6</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.7</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -964,15 +1048,21 @@
     </div>
   </div>
 
-  <!-- BARRA FLOTANTE DEL CARRITO ESTILO PLAYAZO (FONDO CREMA / BOTÓN NARANJA) -->
+  <!-- BARRA FLOTANTE DEL CARRITO: CONTADOR, PRECIO Y ACCESO DIRECTO -->
   <div class="playazo-cart-bar" id="cartBar">
     <div class="cart-bar-left">
-      <span class="cart-units-text" id="cartCountLabel">0 unidades</span>
-      <span class="cart-price-text" id="cartTotalLabel">S/ 0.00</span>
+      <div class="cart-icon-wrap" aria-label="Cantidad de productos en el carrito">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span class="cart-count-badge" id="cartCountBadge" aria-live="polite">0</span>
+      </div>
+      <div class="cart-price-wrap">
+        <span class="cart-status-text" id="cartStatusLabel"></span>
+        <span class="cart-price-text" id="cartTotalLabel">S/ 0.00</span>
+      </div>
     </div>
-    <button class="btn-ver-carrito-orange" onclick="openCartModal()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-      <span>Ver carrito</span>
+    <button class="btn-ver-carrito" onclick="openCartModal()">
+      <span>VER CARRITO</span>
+      <svg class="cart-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
     </button>
   </div>
 
@@ -1296,7 +1386,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.6' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.7' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1327,7 +1417,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.6' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.7' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -2082,7 +2172,7 @@
             <div class="qty-card-control">
               <button class="btn-card-qty" onclick="changeQty('${prod.id}', -1)">-</button>
               <span class="card-qty-num">${inCartQty}</span>
-              <button class="btn-card-qty" onclick="changeQty('${prod.id}', 1)">+</button>
+              <button class="btn-card-qty btn-card-qty-plus" onclick="changeQty('${prod.id}', 1)">+</button>
             </div>
           `;
         } else {
@@ -2187,11 +2277,6 @@
     }
 
     function updateCartBar() {
-      if (cartBlockedByOther()) {
-        document.getElementById('cartCountLabel').innerText = "Carrito de otra tienda";
-        document.getElementById('cartTotalLabel').innerText = "Toca para ver";
-        return;
-      }
       let totalQty = 0;
       let totalPrice = 0;
 
@@ -2200,8 +2285,28 @@
         totalPrice += (parseFloat(item.product.price) || 0) * item.qty;
       });
 
-      document.getElementById('cartCountLabel').innerText = `${totalQty} unidad${totalQty === 1 ? '' : 'es'}`;
-      document.getElementById('cartTotalLabel').innerText = `S/ ${totalPrice.toFixed(2)}`;
+      const countBadge = document.getElementById('cartCountBadge');
+      const statusLabel = document.getElementById('cartStatusLabel');
+      const totalLabel = document.getElementById('cartTotalLabel');
+      if (countBadge) {
+        countBadge.innerText = totalQty > 99 ? '99+' : String(totalQty);
+        countBadge.style.display = totalQty > 0 ? 'flex' : 'none';
+      }
+
+      if (cartBlockedByOther()) {
+        if (statusLabel) {
+          statusLabel.innerText = 'Carrito de otra tienda';
+          statusLabel.style.display = 'block';
+        }
+        if (totalLabel) totalLabel.innerText = 'Toca para ver';
+        return;
+      }
+
+      if (statusLabel) {
+        statusLabel.innerText = '';
+        statusLabel.style.display = 'none';
+      }
+      if (totalLabel) totalLabel.innerText = `S/ ${totalPrice.toFixed(2)}`;
     }
 
     function openCartModal() {
@@ -2248,7 +2353,7 @@
               <div class="qty-card-control" style="width:auto; gap:6px; margin-top:4px; justify-content:flex-end;">
                 <button class="btn-card-qty" onclick="changeQty('${item.product.id}', -1)">-</button>
                 <span class="card-qty-num" style="min-width:18px; text-align:center;">${item.qty}</span>
-                <button class="btn-card-qty" style="background:#0369a1; color:#ffffff; font-weight:700;" onclick="changeQty('${item.product.id}', 1)">+</button>
+                <button class="btn-card-qty btn-card-qty-plus" onclick="changeQty('${item.product.id}', 1)">+</button>
               </div>
             </div>
           </div>
@@ -2431,10 +2536,10 @@
               <div class="qty-card-control" style="width:auto; gap:8px;">
                 <button class="btn-card-qty" style="width:36px; height:36px;" onclick="changeQtyFromDetail(-1)">-</button>
                 <span class="card-qty-num" style="min-width:24px; text-align:center; font-size:1.15rem;">${inCartQty}</span>
-                <button class="btn-card-qty" style="width:36px; height:36px;" onclick="changeQtyFromDetail(1)">+</button>
+                <button class="btn-card-qty btn-card-qty-plus" style="width:36px; height:36px;" onclick="changeQtyFromDetail(1)">+</button>
               </div>
             </div>
-            <button class="btn-ver-carrito-orange" style="width:100%; justify-content:center; padding:13px; font-size:1rem;" onclick="closeProductDetailModal(); openCartModal();">
+            <button class="btn-ver-carrito-detail" style="width:100%; justify-content:center; padding:13px; font-size:1rem;" onclick="closeProductDetailModal(); openCartModal();">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
               <span>Ver mi Carrito</span>
             </button>
