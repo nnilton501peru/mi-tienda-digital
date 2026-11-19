@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Mi Tienda Digital tienda.html v2.4.8 | Diagnóstico local TD-001..TD-009 -->
+<!-- Mi Tienda Digital tienda.html v2.5.0 | Diagnóstico local TD-001..TD-009 -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mi Tienda Digital - Pedidos Delivery v2.4.8</title>
+  <title>Mi Tienda Digital - Pedidos Delivery v2.5.0</title>
   <script>
     /* MTD_DIAGNOSTICS v1.0 — capturador temprano; nunca debe interrumpir la tienda */
     (function () {
@@ -110,8 +110,8 @@
       window.MTD_DIAG = api;
       try {
         var params = new URLSearchParams(window.location.search);
-        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.4.8' });
-      } catch (_) { setContext({ file: 'tienda.html', version: '2.4.8' }); }
+        setContext({ slug: params.get('tienda') || params.get('slug') || '', file: 'tienda.html', version: '2.5.0' });
+      } catch (_) { setContext({ file: 'tienda.html', version: '2.5.0' }); }
       window.addEventListener('error', function (event) {
         try {
           var target = event && event.target;
@@ -901,7 +901,7 @@
     <button class="btn-mis-pedidos" onclick="openOrdersModal()">Mis pedidos</button>
     <div class="header-center">
       <h1 id="storeTitle" class="store-main-title"></h1>
-        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.4.8</span>
+        <span id="mtdPublicVersion" style="display:inline-block;margin:4px 0 0 8px;padding:2px 7px;border-radius:999px;background:#000000;color:#ffffff;font-size:.68rem;vertical-align:middle;">v2.5.0</span>
       <span id="storeBadge" class="store-sub-slug"></span>
     </div>
     <div class="header-right">
@@ -970,7 +970,6 @@
       </div>
 
       <div class="modal-body">
-        <div id="swapBackupBar" style="display:none;"></div>
         <div class="cart-items-list" id="cartItemsList">
           <!-- Items del carrito -->
         </div>
@@ -1092,61 +1091,6 @@
     </div>
   </div>
 
-  <!-- v2.4.8: ventana única de recuperación (dos etapas) -->
-  <div class="modal-overlay" id="recoveryModal">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title" id="recoveryTitle">¿Enviaste tu pedido por WhatsApp?</h2>
-        <button class="btn-close" onclick="closeRecoveryWindow()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p id="recoveryText" style="font-size:0.95rem; color:#1e293b; line-height:1.4;"></p>
-        <div id="recoveryViewA" style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
-          <button class="btn-send-whatsapp" id="recoveryYesBtn">Sí, ya lo envié</button>
-          <button class="btn-add-playazo" id="recoveryNoBtn" style="background:#ffffff; color:#0369a1; border:2px solid #0369a1;">No, todavía no lo envié</button>
-        </div>
-        <div id="recoveryViewB" style="display:none; flex-direction:column; gap:10px; margin-top:12px;">
-          <button class="btn-add-playazo" id="recoveryKeepBtn" style="background:#64748b;">Quedarme con mis productos nuevos</button>
-          <button class="btn-add-playazo" id="recoveryOnlyPrevBtn">Recuperar solamente el pedido anterior</button>
-          <button class="btn-send-whatsapp" id="recoveryCombineBtn">Combinar los dos carritos</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- v2.4.7: carrito nuevo y pedido anterior (el cliente elige) -->
-  <div class="modal-overlay" id="orphanChoiceModal">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">Tienes productos en tu carrito</h2>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:0.95rem; color:#1e293b; line-height:1.4;">Hay un pedido anterior que no confirmaste. ¿Qué quieres hacer con tu carrito actual?</p>
-      </div>
-      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn-send-whatsapp" id="orphanChoiceCombine">Combinar productos</button>
-        <button class="btn-add-playazo" id="orphanChoiceKeep" style="background:#64748b;">Conservar mi carrito</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- v2.3.4: PREGUNTA DE ENVÍO (cerrar con la X no borra nada) -->
-  <div class="modal-overlay" id="pendingQuestionModal">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h2 class="modal-title">Pedido pendiente</h2>
-        <button class="btn-close" onclick="closeSentQuestion()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p id="pendingQuestionText" style="font-size:0.95rem; color:#1e293b; line-height:1.4;"></p>
-      </div>
-      <div class="modal-footer" style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn-send-whatsapp" id="pendingQuestionYes">Sí, ya lo envié</button>
-        <button class="btn-add-playazo" id="pendingQuestionNo" style="background:#64748b;">Todavía no lo envié</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     const SUPABASE_URL = "https://lwlduhwibscwrhhwktic.supabase.co";
     const STORAGE_KEY_V13 = "mi_tienda_storage_v1.3_data";
@@ -1262,7 +1206,8 @@
       let requestedSlug = urlParams.get('tienda') || urlParams.get('slug') || '';
       requestedSlug = requestedSlug.trim().toLowerCase().replace(/^\/+/, '');
 
-      await initializeCatalog(requestedSlug).then(() => { try { setupPendingRecovery(); } catch (_) { mtdDiag('TD-006', 'pending-recovery', 'No se pudo recuperar el estado de confirmación del pedido.'); } });
+      await initializeCatalog(requestedSlug);
+      if (currentStore) { try { await withOrderLock(currentStore.id, () => migrateLegacyPendingsNow(currentStore.id)); } catch (_) {} }
     });
 
     function showUnavailable() {
@@ -1275,7 +1220,7 @@
 
     async function initializeCatalog(requestedSlug) {
       // v2.3.1: una sola consulta pública por slug. Nunca se carga otra tienda.
-      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.4.8' }); } catch (_) {}
+      try { window.MTD_DIAG.setContext({ slug: requestedSlug, file: 'tienda.html', version: '2.5.0' }); } catch (_) {}
       if (!requestedSlug) {
         showUnavailable();
         return;
@@ -1306,7 +1251,7 @@
     async function selectStore(catalogData) {
       // Datos llegan de get_public_catalog: store, categories (visibles) y products (de tienda visible)
       currentStore = catalogData.store;
-      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.4.8' });
+      window.MTD_DIAG.setContext({ storeId: currentStore.id, slug: currentStore.slug, file: 'tienda.html', version: '2.5.0' });
       document.getElementById('storeTitle').innerText = currentStore.name || "Mi Tienda";
       document.getElementById('storeBadge').innerText = "/" + (currentStore.slug || "tienda");
 
@@ -1367,59 +1312,18 @@
 
     // ===== v2.3.5: recuperación fiable de confirmación y bloqueo de envíos simultáneos =====
     const PENDING_STALE_MS = 30000;
-    let orphanCheckTimer = null; // v2.4.7: una sola revisión programada por página
-    let orphanCountdownTimer = null; // v2.4.8: cuenta regresiva orientativa
-    let recoveryWindowOpen = false; // v2.4.8: ventana de recuperación abierta
-    let myToken = null;
-    let activePendingStoreId = null;
-    let activeOrderId = null;
-    let heartbeatTimer = null;
     let lastPayloadIds = [];
-    let questionShown = false;
-    let visibilityBound = false;
-    let ownershipLost = null;
-    let pendingQuestionTimer = null;
     let sendInFlight = false;
 
-    function getTabId() {
-      let id = null;
-      try { id = sessionStorage.getItem('playazo_tab_id'); } catch (e) {}
-      if (!id) {
-        id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-        try { sessionStorage.setItem('playazo_tab_id', id); } catch (e) {}
-      }
-      return id;
-    }
 
-    function pendingKey(storeId) { return 'playazo_pending_order_' + storeId; }
-    function tokenKey(storeId) { return 'playazo_token_' + storeId; }
 
     function newToken() {
       return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12) + '-' + Math.random().toString(36).slice(2, 8);
     }
 
-    function readPending(storeId) {
-      try {
-        const raw = localStorage.getItem(pendingKey(storeId));
-        return raw ? JSON.parse(raw) : null;
-      } catch (e) { return null; }
-    }
 
-    function writePending(p) {
-      try {
-        localStorage.setItem(pendingKey(p.storeId), JSON.stringify(p));
-      } catch (e) { return false; }
-      const back = readPending(p.storeId);
-      return !!back && back.orderId === p.orderId && !!back.owner && !!p.owner && back.owner.token === p.owner.token;
-    }
 
-    function removePending(storeId) {
-      try { localStorage.removeItem(pendingKey(storeId)); } catch (e) {}
-    }
 
-    function ownsPending(p) {
-      return !!p && !!p.owner && !!myToken && p.owner.token === myToken;
-    }
 
     function withOrderLock(storeId, fn) {
       if (navigator.locks && navigator.locks.request) {
@@ -1489,634 +1393,51 @@
       } catch (e) { return false; }
     }
 
-    function writeHistory(p) {
-      try {
-        const key = 'playazo_orders_history_' + p.storeId;
-        const history = JSON.parse(localStorage.getItem(key) || '[]');
-        if (history.some(h => h.orderId === p.orderId)) return true;
-        history.unshift({
-          orderId: p.orderId,
-          date: new Date().toLocaleString('es-PE'),
-          store: p.storeName,
-          total: p.total,
-          items: p.sent.map(s => `${s.qty}x ${s.name}`)
-        });
-        localStorage.setItem(key, JSON.stringify(history.slice(0, 20)));
-      } catch (e) { return false; }
-      return historyHasOrder(p.storeId, p.orderId);
-    }
 
-    function startHeartbeat() {
-      stopHeartbeat();
-      heartbeatTimer = setInterval(() => {
-        const sid = activePendingStoreId;
-        if (!sid) { stopHeartbeat(); return; }
-        withOrderLock(sid, () => {
-          const p = readPending(sid);
-          if (!ownsPending(p)) { stopHeartbeat(); return; }
-          p.lastSeen = Date.now();
-          writePending(p);
-        });
-      }, 5000);
-    }
 
-    function stopHeartbeat() {
-      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-    }
 
-    function resetLocalPendingState() {
-      activePendingStoreId = null;
-      activeOrderId = null;
-      myToken = null;
-      if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
-      stopHeartbeat();
-    }
 
-    function clearCustomerFields() {
-      document.getElementById('custName').value = '';
-      document.getElementById('custAddress').value = '';
-      document.getElementById('custNotes').value = '';
-    }
 
-    function askSentQuestion(text, onYes, onNo) {
-      document.getElementById('pendingQuestionText').innerText = text;
-      const yesBtn = document.getElementById('pendingQuestionYes');
-      const noBtn = document.getElementById('pendingQuestionNo');
-      yesBtn.onclick = async () => {
-        yesBtn.disabled = true;
-        try { await onYes(); } finally { yesBtn.disabled = false; }
-      };
-      noBtn.onclick = () => { onNo(); };
-      document.getElementById('pendingQuestionModal').style.display = 'flex';
-    }
 
-    function closeSentQuestion() {
-      document.getElementById('pendingQuestionModal').style.display = 'none';
-      questionShown = false;
-      if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
-    }
 
-    function keepNotSent() {
-      const sid = activePendingStoreId;
-      if (sid) {
-        const p = readPending(sid);
-        if (ownsPending(p) && p.state === 'PENDING' && p.orderId === activeOrderId) removePending(sid);
-      }
-      resetLocalPendingState();
-      closeSentQuestion();
-    }
 
-    async function resolveSent(subtract) {
-      const sid = activePendingStoreId;
-      if (!sid) return;
-      try {
-      await withOrderLock(sid, async () => {
-        let p = readPending(sid);
-        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
-          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
-          resetLocalPendingState();
-          closeSentQuestion();
-          return;
-        }
-
-        // 1. Historial primero, verificado por orderId
-        if (p.state === 'PENDING') {
-          if (!writeHistory(p)) {
-            mtdDiag('TD-008', 'write-history', 'No se pudo guardar o verificar el historial del pedido.');
-            alert("No se pudo registrar tu pedido en el historial. Tu carrito se ha conservado. Intenta de nuevo.");
-            return;
-          }
-          p.state = 'HISTORY_OK';
-          if (!writePending(p)) {
-            mtdDiag('TD-006', 'pending-state-recovery', 'No se pudo guardar el estado recuperado de la confirmación.');
-            alert("No se pudo guardar el estado del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
-            return;
-          }
-        }
-
-        // 2. Cantidades original y esperada: se calculan una sola vez y se persisten antes de restar
-        if (subtract && p.expectedQty === null) {
-          p.originalQty = {};
-          p.expectedQty = {};
-          p.sent.forEach(s => {
-            const cur = cart[s.id] ? cart[s.id].qty : 0;
-            p.originalQty[s.id] = cur;
-            p.expectedQty[s.id] = Math.max(0, cur - s.qty);
-          });
-          if (!writePending(p)) {
-            alert("No se pudo guardar el cálculo del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
-            return;
-          }
-        }
-
-        // 3. Resta línea por línea, idempotente
-        if (subtract) {
-          let decided = null;
-          for (const s of p.sent) {
-            if (p.done[s.id]) continue;
-            const cur = cart[s.id] ? cart[s.id].qty : 0;
-            const exp = p.expectedQty[s.id];
-            const orig = p.originalQty[s.id];
-            if (cur !== exp) {
-              if (cur !== orig && decided === null) {
-                decided = confirm(`Tu carrito cambió después de enviar «${s.name}».\n\nAceptar: restar lo enviado de tu carrito.\nCancelar: conservar tu carrito tal como está.`) ? 'subtract' : 'keep';
-              }
-              if (cur === orig || decided === 'subtract') {
-                if (exp <= 0) delete cart[s.id]; else cart[s.id].qty = exp;
-                saveActiveCart();
-              }
-            }
-            p.done[s.id] = true;
-            if (!writePending(p)) {
-              alert("No se pudo guardar el avance del pedido. Tu carrito se ha conservado. Intenta de nuevo.");
-              return;
-            }
-          }
-        }
-
-        // 4. Cierre: CART_OK y borrado del pendiente
-        p.state = 'CART_OK';
-        if (!writePending(p)) {
-          alert("No se pudo cerrar el pedido. Tu carrito se ha conservado. Intenta de nuevo.");
-          return;
-        }
-        removePending(sid);
-        resetLocalPendingState();
-        closeSentQuestion();
-        if (subtract) {
-          saveActiveCart();
-          updateCartBar();
-          renderProducts();
-          renderCartModalItems();
-        }
-        clearCustomerFields();
-        closeCartModal();
-        closeProductDetailModal();
-        showOrderSuccessBanner();
-      });
-      } catch (_) {
-        mtdDiag('TD-006', 'pending-recovery', 'Falló la recuperación o resolución de la confirmación del pedido.');
-      }
-    }
 
     // ===== v2.4.8: ventana de recuperación de dos etapas =====
-    function snapshotSummary(p) {
-      const items = Array.isArray(p.cartSnapshot) ? p.cartSnapshot : [];
-      let count = 0, total = 0;
-      items.forEach(it => {
-        if (!it || !it.product) return;
-        const qty = Number(it.qty) || 0;
-        count += qty;
-        total += (parseFloat(it.product.price) || 0) * qty;
-      });
-      return { count: count, total: total };
-    }
 
-    function showRecoveryWindow(sid) {
-      const p = readPending(sid);
-      if (!p) return;
-      recoveryWindowOpen = true;
-      document.getElementById('recoveryYesBtn').onclick = () => recoveryYes(sid);
-      document.getElementById('recoveryNoBtn').onclick = () => showRecoveryViewB();
-      document.getElementById('recoveryKeepBtn').onclick = () => recoveryKeep(sid);
-      document.getElementById('recoveryOnlyPrevBtn').onclick = () => recoveryOnlyPrevious(sid);
-      document.getElementById('recoveryCombineBtn').onclick = () => recoveryCombine(sid);
-      showRecoveryViewA(snapshotSummary(p));
-      document.getElementById('recoveryModal').style.display = 'flex';
-    }
 
-    function showRecoveryViewA(sum) {
-      document.getElementById('recoveryTitle').innerText = '¿Enviaste tu pedido por WhatsApp?';
-      document.getElementById('recoveryText').innerText = 'Encontramos un pedido anterior pendiente de confirmar: ' + sum.count + ' producto(s) por S/ ' + sum.total.toFixed(2) + '.';
-      document.getElementById('recoveryViewA').style.display = 'flex';
-      document.getElementById('recoveryViewB').style.display = 'none';
-    }
 
-    function showRecoveryViewB() {
-      document.getElementById('recoveryTitle').innerText = '¿Qué quieres hacer con tus productos?';
-      document.getElementById('recoveryText').innerText = 'Quedarme con mis productos nuevos: descarta el pedido anterior y tu carrito no cambia. Recuperar solamente el pedido anterior: tus productos nuevos se guardan en esta pestaña. Combinar: junta ambos carritos y suma las cantidades.';
-      document.getElementById('recoveryViewA').style.display = 'none';
-      document.getElementById('recoveryViewB').style.display = 'flex';
-    }
 
-    function closeRecoveryWindow() {
-      document.getElementById('recoveryModal').style.display = 'none';
-      recoveryWindowOpen = false;
-    }
 
-    function recoveryOwnedCheck(sid) {
-      return !!(activePendingStoreId === sid && activeOrderId);
-    }
 
-    // Fuera de cualquier lock: resolveSent adquiere su propio lock
-    async function recoveryYes(sid) {
-      if (!recoveryOwnedCheck(sid)) {
-        alert("No se puede confirmar este pedido desde esta pestaña. No se ha registrado nada.");
-        return;
-      }
-      closeRecoveryWindow();
-      await resolveSent(false);
-    }
+    // Fuera de cualquier lock: la confirmación toma su propio lock
 
-    function recoveryKeep(sid) { recoveryFinish(sid, 'keep'); }
-    function recoveryCombine(sid) { recoveryFinish(sid, 'combine'); }
 
-    // Un solo lock; dentro solo funciones síncronas (finishOrphanChoice no adquiere lock)
-    function recoveryFinish(sid, mode) {
-      if (!recoveryOwnedCheck(sid)) {
-        alert("No se puede cambiar este pedido desde esta pestaña. No se ha registrado nada.");
-        return;
-      }
-      withOrderLock(sid, () => {
-        const p = readPending(sid);
-        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
-          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
-          resetLocalPendingState();
-          closeRecoveryWindow();
-          return;
-        }
-        closeRecoveryWindow();
-        finishOrphanChoice(sid, mode);
-      });
-    }
+    // Un solo lock; dentro solo funciones síncronas
 
-    function swapKey(sid) { return 'playazo_swap_' + sid; }
 
-    function readSwap(sid) {
-      try {
-        const raw = sessionStorage.getItem(swapKey(sid));
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (!obj || obj.storeId !== sid || !obj.cart || Object.keys(obj.cart).length === 0) return null;
-        return obj;
-      } catch (e) { return null; }
-    }
 
     // Escribe y verifica la lectura antes de dar la escritura por buena
-    function writeSwapVerified(sid, obj) {
-      try {
-        const raw = JSON.stringify(obj);
-        sessionStorage.setItem(swapKey(sid), raw);
-        return sessionStorage.getItem(swapKey(sid)) === raw;
-      } catch (e) { return false; }
-    }
 
-    function removeSwap(sid) {
-      try { sessionStorage.removeItem(swapKey(sid)); } catch (e) {}
-    }
 
-    function activeCartPersisted() {
-      try {
-        const saved = sessionStorage.getItem('playazo_active_cart');
-        const savedStore = sessionStorage.getItem('playazo_active_cart_store_id');
-        return saved === JSON.stringify(cart) && savedStore === cartStoreId;
-      } catch (e) { return false; }
-    }
 
     // Solo pedido anterior: primero respaldo verificado, luego carrito, luego borrar pendiente
-    function recoveryOnlyPrevious(sid) {
-      if (!recoveryOwnedCheck(sid)) {
-        alert("No se puede cambiar este pedido desde esta pestaña. No se ha registrado nada.");
-        return;
-      }
-      if (sendInFlight) {
-        alert("Espera a que termine el envío en curso antes de cambiar tus productos.");
-        return;
-      }
-      withOrderLock(sid, () => {
-        const p = readPending(sid);
-        if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
-          alert("Este pedido ya no está vinculado a esta pestaña. No se ha registrado nada.");
-          resetLocalPendingState();
-          closeRecoveryWindow();
-          return;
-        }
-        if (readSwap(sid)) {
-          alert("Ya tienes productos guardados de otra recuperación en esta pestaña. Usa el botón del carrito antes de continuar.");
-          return;
-        }
-        const rebuilt = {};
-        (Array.isArray(p.cartSnapshot) ? p.cartSnapshot : []).forEach(it => {
-          if (!it || !it.product) return;
-          const current = productsList.find(pr => pr.id === it.product.id);
-          if (!current || current.is_available === false) return;
-          rebuilt[current.id] = { product: current, qty: Number(it.qty) || 0 };
-        });
-        if (Object.keys(rebuilt).length === 0) {
-          alert("Los productos del pedido anterior ya no están disponibles. Puedes elegir otra opción.");
-          return;
-        }
-        const prevCart = JSON.parse(JSON.stringify(cart));
-        const prevStoreId = cartStoreId, prevName = cartOriginName, prevSlug = cartOriginSlug;
-        const hadNew = Object.keys(prevCart).length > 0;
-        if (hadNew) {
-          const saved = writeSwapVerified(sid, { storeId: sid, label: 'nuevos', cart: prevCart, originName: prevName, originSlug: prevSlug });
-          if (!saved) {
-            alert("No se pudieron guardar tus productos nuevos. No se ha cambiado nada.");
-            return;
-          }
-        }
-        const rollback = () => {
-          cart = prevCart;
-          cartStoreId = prevStoreId;
-          cartOriginName = prevName;
-          cartOriginSlug = prevSlug;
-          saveActiveCart();
-          if (hadNew) removeSwap(sid);
-        };
-        cart = rebuilt;
-        cartStoreId = sid;
-        cartOriginName = currentStore ? (currentStore.name || '') : '';
-        cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
-        saveActiveCart();
-        if (!activeCartPersisted()) {
-          rollback();
-          alert("No se pudo preparar el pedido anterior. Tus productos se conservaron.");
-          return;
-        }
-        removePending(sid);
-        if (readPending(sid)) {
-          rollback();
-          alert("No se pudo cerrar el pedido anterior. Tus productos se conservaron. Intenta de nuevo.");
-          return;
-        }
-        resetLocalPendingState();
-        closeRecoveryWindow();
-        hidePendingNotice();
-        if (hadNew) {
-          showPendingNotice("Tus productos nuevos quedaron guardados. Puedes volver a ellos desde el carrito. Si cierras esta pestaña, se perderán.");
-        }
-        updateCartBar();
-        renderProducts();
-        renderCartModalItems();
-      });
-    }
 
     // Alternancia: el respaldo siempre se sobrescribe con el otro carrito, verificado antes
-    function toggleSwap() {
-      if (!currentStore) return;
-      const sid = currentStore.id;
-      if (sendInFlight) {
-        alert("Espera a que termine el envío en curso antes de cambiar tus productos.");
-        return;
-      }
-      if (readPending(sid)) {
-        alert("Primero responde si enviaste el pedido anterior.");
-        return;
-      }
-      const swap = readSwap(sid);
-      if (!swap) { updateSwapControls(); return; }
-      const prevCart = JSON.parse(JSON.stringify(cart));
-      const prevStoreId = cartStoreId, prevName = cartOriginName, prevSlug = cartOriginSlug;
-      const currentIsEmpty = Object.keys(prevCart).length === 0;
-      const otherLabel = swap.label === 'nuevos' ? 'anterior' : 'nuevos';
-      if (!currentIsEmpty) {
-        const ok = writeSwapVerified(sid, { storeId: sid, label: otherLabel, cart: prevCart, originName: prevName, originSlug: prevSlug });
-        if (!ok) {
-          alert("No se pudo guardar tu carrito actual. No se ha cambiado nada.");
-          return;
-        }
-      }
-      cart = JSON.parse(JSON.stringify(swap.cart));
-      cartStoreId = sid;
-      cartOriginName = swap.originName || (currentStore.name || '');
-      cartOriginSlug = swap.originSlug || (currentStore.slug || '');
-      saveActiveCart();
-      if (!activeCartPersisted()) {
-        cart = prevCart;
-        cartStoreId = prevStoreId;
-        cartOriginName = prevName;
-        cartOriginSlug = prevSlug;
-        saveActiveCart();
-        if (!currentIsEmpty) writeSwapVerified(sid, swap);
-        alert("No se pudo cambiar de carrito. Tus productos se conservaron.");
-      } else if (currentIsEmpty) {
-        removeSwap(sid);
-      }
-      updateSwapControls();
-      updateCartBar();
-      renderProducts();
-      renderCartModalItems();
-    }
 
-    function updateSwapControls() {
-      const bar = document.getElementById('swapBackupBar');
-      if (!bar) return;
-      const sid = currentStore ? currentStore.id : null;
-      const swap = sid ? readSwap(sid) : null;
-      if (!swap) {
-        bar.style.display = 'none';
-        bar.innerHTML = '';
-        return;
-      }
-      const label = swap.label === 'nuevos' ? 'Volver a mis productos nuevos' : 'Ver pedido anterior';
-      bar.innerHTML = '<button type="button" class="btn-add-playazo" style="width:100%; margin-bottom:6px;" onclick="toggleSwap()">' + label + '</button>' +
-        '<div style="font-size:12px; color:#334155; margin-bottom:10px;">Si cierras esta pestaña, estos productos se pierden.</div>';
-      bar.style.display = 'block';
-    }
 
-    function restoreOrphanSnapshot(sid) {
-      const p = readPending(sid);
-      if (!p || p.orderId !== activeOrderId || !ownsPending(p)) {
-        resetLocalPendingState();
-        closeSentQuestion();
-        updateCartBar();
-        renderProducts();
-        renderCartModalItems();
-        return;
-      }
-      closeSentQuestion();
-      const hasCart = Object.keys(cart).length > 0;
-      const hasSnapshot = Array.isArray(p.cartSnapshot) && p.cartSnapshot.length > 0;
-      if (!hasCart || !hasSnapshot) {
-        finishOrphanChoice(sid, 'combine');
-        return;
-      }
-      showOrphanChoiceModal(sid);
-    }
 
     // v2.4.7: el cliente elige; nunca se reemplaza el carrito nuevo en silencio
-    function showOrphanChoiceModal(sid) {
-      document.getElementById('orphanChoiceCombine').onclick = () => finishOrphanChoice(sid, 'combine');
-      document.getElementById('orphanChoiceKeep').onclick = () => finishOrphanChoice(sid, 'keep');
-      document.getElementById('orphanChoiceModal').style.display = 'flex';
-    }
 
-    function finishOrphanChoice(sid, mode) {
-      document.getElementById('orphanChoiceModal').style.display = 'none';
-      const p = readPending(sid);
-      if (p && p.orderId === activeOrderId && ownsPending(p)) {
-        if (mode === 'combine' && Array.isArray(p.cartSnapshot)) mergeSnapshotIntoCart(sid, p.cartSnapshot);
-        removePending(sid);
-      }
-      resetLocalPendingState();
-      closeSentQuestion();
-      hidePendingNotice();
-      updateCartBar();
-      renderProducts();
-      renderCartModalItems();
-    }
 
     // v2.4.7: suma cantidades del pedido anterior al carrito actual; usa precios y disponibilidad actuales
-    function mergeSnapshotIntoCart(sid, snapshot) {
-      let skipped = 0;
-      snapshot.forEach(it => {
-        if (!it || !it.product) return;
-        const current = productsList.find(pr => pr.id === it.product.id);
-        if (!current || current.is_available === false) { skipped++; return; }
-        const prevQty = cart[current.id] ? cart[current.id].qty : 0;
-        cart[current.id] = { product: current, qty: prevQty + (Number(it.qty) || 0) };
-      });
-      if (Object.keys(cart).length > 0) {
-        cartStoreId = sid;
-        cartOriginName = currentStore ? (currentStore.name || '') : '';
-        cartOriginSlug = currentStore ? (currentStore.slug || '') : '';
-      }
-      saveActiveCart();
-      if (skipped > 0) {
-        alert(skipped + " producto(s) del pedido anterior ya no están disponibles y no se agregaron.");
-      }
-    }
 
     // v2.4.7: una sola revisión programada; reintenta hasta que el pedido quede libre
-    function scheduleOrphanCheck(sid, orderId) {
-      if (orphanCheckTimer) clearTimeout(orphanCheckTimer);
-      if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
-      const p = readPending(sid);
-      const wait = p ? Math.max(0, PENDING_STALE_MS - (Date.now() - (p.lastSeen || 0))) + 700 : 1000;
-      const endAt = Date.now() + wait;
-      const render = () => {
-        const secs = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-        showPendingNotice("Revisando tu pedido pendiente de otra pestaña (aprox. " + secs + " s). No necesitas recargar la página.");
-      };
-      render();
-      orphanCountdownTimer = setInterval(render, 1000);
-      orphanCheckTimer = setTimeout(() => {
-        orphanCheckTimer = null;
-        if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
-        recoverOrphan(sid, orderId);
-      }, wait);
-    }
 
-    function showPendingNotice(text) {
-      let el = document.getElementById('pendingNotice');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = 'pendingNotice';
-        el.style.cssText = 'position:fixed;left:12px;right:12px;top:12px;z-index:9000;background:#0f172a;color:#ffffff;padding:12px 14px;border-radius:12px;font-size:14px;text-align:center;box-shadow:0 6px 18px rgba(15,23,42,.25);';
-        document.body.appendChild(el);
-      }
-      el.innerText = text;
-      el.style.display = 'block';
-    }
 
-    function hidePendingNotice() {
-      if (orphanCountdownTimer) { clearInterval(orphanCountdownTimer); orphanCountdownTimer = null; }
-      const el = document.getElementById('pendingNotice');
-      if (el) el.style.display = 'none';
-    }
 
-    function recoverOrphan(sid, orderId) {
-      withOrderLock(sid, async () => {
-        const p = readPending(sid);
-        if (!p || p.orderId !== orderId) { hidePendingNotice(); return; }
-        if (Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS) {
-          mtdDiag('TD-007', 'pending-other-tab-orphan', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
-          scheduleOrphanCheck(sid, orderId);
-          return;
-        }
-        const token = newToken();
-        p.owner = { tabId: getTabId(), token: token, gen: ((p.owner && p.owner.gen) || 0) + 1 };
-        p.lastSeen = Date.now();
-        p.recovered = true;
-        if (!writePending(p)) return;
-        myToken = token;
-        try { sessionStorage.setItem(tokenKey(sid), token); } catch (e) {}
-        activePendingStoreId = sid;
-        activeOrderId = orderId;
-        startHeartbeat();
-        hidePendingNotice();
-        showRecoveryWindow(sid);
-      });
-    }
 
-    function setupPendingRecovery() {
-      if (!currentStore) return;
-      if (!visibilityBound) {
-        document.addEventListener('visibilitychange', onPendingVisibility);
-        window.addEventListener('pageshow', onPendingVisibility);
-        window.addEventListener('focus', onPendingVisibility);
-        visibilityBound = true;
-      }
-      const sid = currentStore.id;
-      const p = readPending(sid);
-      if (!p) return;
-      const tab = getTabId();
-      let savedToken = null;
-      try { savedToken = sessionStorage.getItem(tokenKey(sid)); } catch (e) {}
-      if (p.owner && p.owner.tabId === tab && savedToken && savedToken === p.owner.token) {
-        myToken = savedToken;
-        activePendingStoreId = sid;
-        activeOrderId = p.orderId;
-        startHeartbeat();
-        if (p.state === 'PENDING') {
-          questionShown = true;
-          askSentQuestion("¿Ya enviaste tu pedido por WhatsApp?", () => resolveSent(true), keepNotSent);
-        } else {
-          resolveSent(true);
-        }
-        return;
-      }
-      const recent = Date.now() - (p.lastSeen || 0) < PENDING_STALE_MS;
-      if (recent) {
-        mtdDiag('TD-007', 'pending-other-tab-active', 'Se bloqueó una acción porque existe un pedido pendiente en otra pestaña.');
-        scheduleOrphanCheck(sid, p.orderId);
-        return;
-      }
-      setTimeout(() => recoverOrphan(sid, p.orderId), 1000);
-    }
 
-    function schedulePendingQuestion(p) {
-      if (pendingQuestionTimer) clearTimeout(pendingQuestionTimer);
-      const elapsed = Date.now() - (Number(p.openedAt) || 0);
-      const remaining = Math.max(0, 3000 - elapsed);
-      pendingQuestionTimer = setTimeout(() => {
-        pendingQuestionTimer = null;
-        onPendingVisibility();
-      }, remaining);
-    }
 
-    function onPendingVisibility() {
-      if (document.visibilityState === 'hidden') return;
-      const sid = activePendingStoreId;
-      if (!sid) return;
-      const p = readPending(sid);
-      if (!ownsPending(p)) {
-        ownershipLost = sid;
-        resetLocalPendingState();
-        closeSentQuestion();
-        alert("Este pedido se retomó en otra pestaña. No envíes este carrito desde aquí.");
-        return;
-      }
-      if (p.recovered) {
-        if (p.state === 'PENDING' && !recoveryWindowOpen) {
-          activePendingStoreId = sid;
-          activeOrderId = p.orderId;
-          showRecoveryWindow(sid);
-        }
-        return;
-      }
-      if (p.state === 'PENDING' && !questionShown) {
-        const elapsed = Date.now() - (Number(p.openedAt) || 0);
-        if (elapsed < 3000) {
-          schedulePendingQuestion(p);
-          return;
-        }
-        if (pendingQuestionTimer) { clearTimeout(pendingQuestionTimer); pendingQuestionTimer = null; }
-        questionShown = true;
-        askSentQuestion("¿Ya enviaste tu pedido por WhatsApp?", () => resolveSent(true), keepNotSent);
-      }
-    }
 
     async function requestCartValidation() {
       const entries = Object.values(cart);
@@ -2223,24 +1544,155 @@
     }
 
     // v2.3.5: una sola ejecución por pestaña y bloqueo coordinado por tienda.
+    // ===== v2.5.0: historial local de referencias, firma anti-duplicado y migración =====
+    function buildHistoryEntry(sid, sentLines, total) {
+      return {
+        orderId: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        storeId: sid,
+        storeName: currentStore ? (currentStore.name || 'Mi Tienda') : 'Mi Tienda',
+        date: new Date().toLocaleString('es-PE'),
+        total: Number(total).toFixed(2),
+        status: 'preparado',
+        items: sentLines.map(l => ({ id: l.id, name: l.name, qty: l.qty, price: l.price }))
+      };
+    }
+
+    function appendHistoryEntry(sid, entry) {
+      try {
+        const key = 'playazo_orders_history_' + sid;
+        const history = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!Array.isArray(history)) return false;
+        if (!history.some(h => h.orderId === entry.orderId)) history.unshift(entry);
+        const raw = JSON.stringify(history.slice(0, 20));
+        localStorage.setItem(key, raw);
+        return localStorage.getItem(key) === raw;
+      } catch (e) { return false; }
+    }
+
+    async function writeHistoryVerified(sid, entry) {
+      let ok = false;
+      await withOrderLock(sid, () => { ok = appendHistoryEntry(sid, entry); });
+      return ok;
+    }
+
+    async function removeHistoryEntry(sid, orderId) {
+      await withOrderLock(sid, () => {
+        try {
+          const key = 'playazo_orders_history_' + sid;
+          const history = JSON.parse(localStorage.getItem(key) || '[]');
+          if (!Array.isArray(history)) return;
+          localStorage.setItem(key, JSON.stringify(history.filter(h => h.orderId !== orderId)));
+        } catch (e) {}
+      });
+    }
+
+    function orderSignature(sid, sentLines) {
+      return sid + '|' + sentLines.map(l => l.id + ':' + l.qty + '@' + Number(l.price).toFixed(2)).sort().join(',');
+    }
+
+    function recentSignatureKey(sid) { return 'playazo_last_order_sig_' + sid; }
+
+    function isRecentDuplicate(sid, sig) {
+      try {
+        const last = JSON.parse(localStorage.getItem(recentSignatureKey(sid)) || 'null');
+        return !!(last && last.sig === sig && Date.now() - last.at < 60000);
+      } catch (e) { return false; }
+    }
+
+    function markSignature(sid, sig) {
+      try { localStorage.setItem(recentSignatureKey(sid), JSON.stringify({ sig: sig, at: Date.now() })); } catch (e) {}
+    }
+
+    // Convierte pendientes VENCIDOS de v2.4.8 en referencias del historial. Idempotente.
+    function migrateLegacyPendingsNow(sid) {
+      const pKey = 'playazo_pending_order_' + sid;
+      let p = null;
+      try { p = JSON.parse(localStorage.getItem(pKey) || 'null'); } catch (e) { p = null; }
+      if (!p || !p.orderId) return;
+      if (Date.now() - (Number(p.lastSeen) || 0) < PENDING_STALE_MS) return; // puede pertenecer a una pestaña v2.4.8 activa
+      const key = 'playazo_orders_history_' + sid;
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { history = []; }
+      if (!Array.isArray(history)) return;
+      if (!history.some(h => h.orderId === p.orderId)) {
+        const src = Array.isArray(p.sent) ? p.sent : [];
+        const items = src.filter(x => x && x.id).map(x => ({ id: x.id, name: x.name, qty: Number(x.qty) || 0, price: Number(x.price) || 0 }));
+        const entry = {
+          orderId: p.orderId,
+          storeId: sid,
+          storeName: p.storeName || (currentStore ? currentStore.name : 'Mi Tienda'),
+          date: new Date(Number(p.openedAt) || Date.now()).toLocaleString('es-PE'),
+          total: String(p.total || '0.00'),
+          status: 'preparado',
+          items: items
+        };
+        if (!appendHistoryEntry(sid, entry)) return; // no eliminar el pendiente si la referencia no quedó verificada
+      }
+      try { localStorage.removeItem(pKey); } catch (e) {}
+    }
+
+    // Volver a pedir: solo productos que siguen en el catálogo actual de ESTA tienda
+    function reorderFromHistory(orderId) {
+      if (!currentStore) return;
+      const sid = currentStore.id;
+      if (sendInFlight) { alert('Espera a que termine el envío en curso.'); return; }
+      if (cartBlockedByOther()) { showPendingCartPanel(); return; }
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem(historyKey()) || '[]'); } catch (e) { history = []; }
+      const entry = Array.isArray(history) ? history.find(h => h.orderId === orderId && h.storeId === sid) : null;
+      if (!entry || !Array.isArray(entry.items)) { alert('No encontramos esa lista en esta tienda.'); return; }
+      let added = 0, skipped = 0;
+      entry.items.forEach(it => {
+        if (!it || typeof it !== 'object') return;
+        const current = productsList.find(pr => pr.id === it.id);
+        if (!current || current.is_available === false) { skipped++; return; }
+        const prev = cart[current.id] ? cart[current.id].qty : 0;
+        cart[current.id] = { product: current, qty: prev + (Number(it.qty) || 0) };
+        added++;
+      });
+      if (added > 0) {
+        cartStoreId = sid;
+        cartOriginName = currentStore.name || '';
+        cartOriginSlug = currentStore.slug || '';
+        saveActiveCart();
+      }
+      closeOrdersModal();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
+      if (skipped > 0) alert(skipped + ' producto(s) de esa lista ya no están disponibles y no se agregaron.');
+    }
+
     async function sendWhatsAppOrder() {
       if (sendInFlight) { mtdDiag('TD-007', 'send-duplicate-blocked', 'Se bloqueó un segundo intento mientras otro envío estaba en curso.'); return; }
       if (!currentStore) return;
       sendInFlight = true;
       const sendButton = document.getElementById('btnSendWhatsApp');
       if (sendButton) sendButton.disabled = true;
+      // v2.5.0: ventana en blanco creada con el gesto del usuario, antes de cualquier espera
+      let waWindow = null;
+      try { waWindow = window.open('', '_blank'); } catch (e) { waWindow = null; }
+      if (!waWindow) {
+        alert('El navegador bloqueó la ventana de WhatsApp. Tu lista sigue aquí. Permite las ventanas emergentes e intenta de nuevo.');
+        sendInFlight = false;
+        if (sendButton) sendButton.disabled = false;
+        return;
+      }
+      let navigated = false;
+      const openUrl = (url) => { navigated = true; waWindow.location.href = url; };
       try {
-        await withSendLock(currentStore.id, sendWhatsAppOrderInternal);
+        await withSendLock(currentStore.id, () => sendWhatsAppOrderInternal(openUrl));
       } catch (err) {
         mtdDiag('TD-005', 'whatsapp-send', 'Falló la preparación o el inicio del envío a WhatsApp.');
         alert((err && err.message) ? err.message : 'No se pudo iniciar el envío. Tu carrito se conserva intacto.');
       } finally {
+        if (!navigated) { try { waWindow.close(); } catch (e) {} }
         sendInFlight = false;
         if (sendButton) sendButton.disabled = false;
       }
     }
 
-    async function sendWhatsAppOrderInternal() {
+    async function sendWhatsAppOrderInternal(openUrl) {
       if (currentStore && currentStore.is_active === false) {
         alert("Esta tienda se encuentra temporalmente pausada y no está recibiendo pedidos.");
         return;
@@ -2250,26 +1702,11 @@
         return;
       }
       if (!currentStore) return;
-      if (ownershipLost === currentStore.id) {
-        alert("Este carrito ya no puede enviarse desde esta pestaña. Recarga la tienda para continuar.");
-        return;
-      }
       if (Object.keys(cart).length === 0) {
-        alert("Agrega al menos un producto con \"+ Agregar\" antes de enviar.");
+        alert('Agrega al menos un producto con "+ Agregar" antes de enviar.');
         return;
       }
       const sid = currentStore.id;
-      const pendingNow = readPending(sid);
-      if (pendingNow) {
-        mtdDiag('TD-007', 'pending-confirmation-block', 'Se bloqueó un nuevo envío porque hay un pedido pendiente de confirmar.');
-        if (activePendingStoreId === sid && ownsPending(pendingNow)) {
-          alert("Tienes un pedido pendiente de confirmar para esta tienda. Responde la pregunta de SÍ o NO que aparece en pantalla.");
-          onPendingVisibility();
-        } else {
-          scheduleOrphanCheck(sid, pendingNow.orderId);
-        }
-        return;
-      }
 
       const custName = document.getElementById('custName').value.trim();
       const custAddress = document.getElementById('custAddress').value.trim();
@@ -2290,13 +1727,6 @@
 
       const res = await requestCartValidation();
       if (!res) return;
-
-      // Segunda comprobación: otra pestaña pudo crear un pendiente mientras Supabase validaba.
-      if (readPending(sid)) {
-        mtdDiag('TD-007', 'pending-send-block', 'Se bloqueó un envío duplicado porque ya existe un envío pendiente.');
-        alert("Este pedido ya tiene un envío pendiente en esta tienda. Regresa a la pestaña que inició el envío para confirmar su estado.");
-        return;
-      }
 
       if (res.status === 'STORE_NOT_AVAILABLE') {
         showUnavailable();
@@ -2336,36 +1766,39 @@
       if (custAddress) mensaje += `📍 *Dirección/Entrega:* ${custAddress}\n`;
       if (custNotes) mensaje += `📝 *Nota:* ${custNotes}\n`;
 
-      // Pendiente creado ANTES de abrir WhatsApp. El carrito no se modifica.
-      const orderId = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      const token = newToken();
-      const p = {
-        orderId: orderId,
-        storeId: sid,
-        storeName: currentStore.name || 'Mi Tienda',
-        state: 'PENDING',
-        openedAt: Date.now(),
-        lastSeen: Date.now(),
-        total: total.toFixed(2),
-        owner: { tabId: getTabId(), token: token, gen: 1 },
-        sent: sentLines,
-        cartSnapshot: snapshotCart(),
-        originalQty: null,
-        expectedQty: null,
-        done: {}
-      };
-      if (!writePending(p)) {
-        alert("No se pudo guardar tu pedido en este navegador. WhatsApp no se ha abierto y tu carrito sigue intacto.");
+      const sig = orderSignature(sid, sentLines);
+      if (isRecentDuplicate(sid, sig)) {
+        mtdDiag('TD-007', 'order-signature-block', 'Se bloqueó un pedido idéntico abierto hace menos de 60 segundos.');
+        alert('Este mismo pedido ya se abrió en WhatsApp hace un momento. Revisa WhatsApp antes de volver a enviarlo.');
         return;
       }
-      myToken = token;
-      try { sessionStorage.setItem(tokenKey(sid), token); } catch (e) {}
-      activePendingStoreId = sid;
-      activeOrderId = orderId;
-      questionShown = false;
-      startHeartbeat();
 
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`, '_blank');
+      // Referencia en el historial: debe quedar verificada antes de abrir WhatsApp
+      const entry = buildHistoryEntry(sid, sentLines, total);
+      const saved = await writeHistoryVerified(sid, entry);
+      if (!saved) {
+        mtdDiag('TD-008', 'write-history', 'No se pudo guardar la referencia del pedido en este navegador.');
+        alert('No pudimos guardar tu lista en este navegador. Tu pedido no se abrió en WhatsApp y tu carrito sigue aquí.');
+        return;
+      }
+
+      try {
+        openUrl('https://wa.me/' + phone + '?text=' + encodeURIComponent(mensaje));
+      } catch (e) {
+        await removeHistoryEntry(sid, entry.orderId);
+        throw e;
+      }
+      markSignature(sid, sig);
+
+      // Solo después de pedir la apertura se vacía el carrito
+      cart = {};
+      cartStoreId = null;
+      cartOriginName = '';
+      cartOriginSlug = '';
+      saveActiveCart();
+      updateCartBar();
+      renderProducts();
+      renderCartModalItems();
       closeCartModal();
       closeProductDetailModal();
     }
@@ -2626,13 +2059,6 @@
 
       document.getElementById('cartCountLabel').innerText = `${totalQty} unidad${totalQty === 1 ? '' : 'es'}`;
       document.getElementById('cartTotalLabel').innerText = `S/ ${totalPrice.toFixed(2)}`;
-      if (activePendingStoreId) {
-        const pp = readPending(activePendingStoreId);
-        if (ownsPending(pp) && pp.state === 'PENDING') {
-          pp.cartSnapshot = snapshotCart();
-          writePending(pp);
-        }
-      }
     }
 
     function openCartModal() {
@@ -2660,7 +2086,6 @@
       if (items.length === 0) {
         container.innerHTML = '<div class="empty-state" style="padding:20px;">Tu carrito está vacío. Agrega productos con "+ Agregar".</div>';
         if (estimatedBox) estimatedBox.style.display = 'none';
-        updateSwapControls();
         return;
       }
 
@@ -2693,7 +2118,6 @@
         estimatedValue.innerText = `S/ ${estimatedTotal.toFixed(2)}`;
         estimatedBox.style.display = 'flex';
       }
-      updateSwapControls();
     }
 
     function showOrderSuccessBanner() {
@@ -2710,23 +2134,31 @@
       const footer = document.getElementById('ordersModalFooter');
       try {
         const history = JSON.parse(localStorage.getItem(historyKey()) || '[]');
-        if (history.length === 0) {
-          body.innerHTML = '<div class="empty-state">No tienes pedidos registrados en este navegador todavía.</div>';
+        if (!Array.isArray(history) || history.length === 0) {
+          body.innerHTML = '<div class="empty-state">No tienes listas guardadas en este navegador todavía.</div>';
           if (footer) footer.style.display = 'none';
         } else {
-          body.innerHTML = history.map(h => `
-            <div class="history-card">
-              <div class="history-date">📅 ${escapeHTML(h.date)} &bull; <b>${escapeHTML(h.store)}</b></div>
-              <div style="font-size:0.88rem; color:#1e293b; margin:4px 0;">
-                ${h.items.map(it => `<div>&bull; ${escapeHTML(it)}</div>`).join('')}
-              </div>
-              <div class="history-total">Total: S/ ${escapeHTML(h.total)}</div>
-            </div>
-          `).join('');
+          body.innerHTML = history.map(h => {
+            const isNew = Array.isArray(h.items) && h.items.length > 0 && typeof h.items[0] === 'object';
+            const lines = isNew
+              ? h.items.map(it => '<div>&bull; ' + escapeHTML(it.qty + 'x ' + it.name) + '</div>').join('')
+              : (h.items || []).map(it => '<div>&bull; ' + escapeHTML(it) + '</div>').join('');
+            const label = isNew ? 'Pedido preparado' : 'Registro anterior';
+            const btn = isNew && h.orderId
+              ? '<button class="btn-add-playazo" style="width:100%; margin-top:8px;" onclick="reorderFromHistory(\'' + escapeHTML(h.orderId) + '\')">Volver a pedir</button>'
+              : '';
+            return '<div class="history-card">' +
+              '<div class="history-date">&#128197; ' + escapeHTML(h.date) + ' &bull; <b>' + escapeHTML(h.store || h.storeName || '') + '</b></div>' +
+              '<div style="font-size:0.8rem; color:#334155; margin:2px 0 4px;">' + label + '. Es una referencia tuya: no confirma que el mensaje se haya enviado.</div>' +
+              '<div style="font-size:0.88rem; color:#1e293b; margin:4px 0;">' + lines + '</div>' +
+              '<div class="history-total">Total: S/ ' + escapeHTML(h.total) + '</div>' +
+              btn +
+              '</div>';
+          }).join('');
           if (footer) footer.style.display = 'block';
         }
       } catch (e) {
-        body.innerHTML = '<div class="empty-state">Error al leer pedidos.</div>';
+        body.innerHTML = '<div class="empty-state">Error al leer tus listas.</div>';
         if (footer) footer.style.display = 'none';
       }
       document.getElementById('ordersModal').style.display = 'flex';
